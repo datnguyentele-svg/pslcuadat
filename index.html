@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PSL Face Scorer</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.16/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.1.16/face_mesh.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.16/drawing_utils.js"></script>
     <style>
         * {
             margin: 0;
@@ -74,6 +77,15 @@
             width: 180px;
             height: 180px;
             margin: 0 auto 30px;
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #333;
+            display: none;
         }
 
         .avatar {
@@ -173,37 +185,35 @@
             box-shadow: 0 0 10px rgba(92, 225, 230, 0.5);
         }
 
-        /* UPLOAD BUTTON */
-        .upload-section {
-            text-align: center;
+        /* BUTTONS */
+        .btn-container {
+            display: flex;
+            gap: 10px;
             margin-top: 20px;
         }
 
-        .upload-btn {
-            background: linear-gradient(135deg, #5CE1E6, #00CED1);
-            color: #000;
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
             border: none;
-            padding: 14px 35px;
-            border-radius: 25px;
-            font-size: 1rem;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s;
-            width: 100%;
         }
 
-        .upload-btn:hover {
+        .btn-primary {
+            background: linear-gradient(135deg, #5CE1E6, #00CED1);
+            color: #000;
+        }
+
+        .btn-secondary {
+            background: #222;
+            color: #888;
+        }
+
+        .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(92, 225, 230, 0.3);
-        }
-
-        .upload-btn:disabled {
-            background: #555;
-            cursor: not-allowed;
-        }
-
-        #fileInput {
-            display: none;
         }
 
         /* LOADING */
@@ -269,10 +279,11 @@
 
         <!-- AVATAR -->
         <div class="avatar-container">
-            <div class="avatar-placeholder" id="avatarPlaceholder" onclick="document.getElementById('fileInput').click()">
+            <div class="avatar-placeholder" id="avatarPlaceholder" onclick="startCamera()">
                 📸
             </div>
             <img src="" alt="Avatar" class="avatar" id="avatarImage" style="display: none;">
+            <video id="video" playsinline></video>
         </div>
 
         <!-- SCORE GRID -->
@@ -332,10 +343,10 @@
             </div>
         </div>
 
-        <!-- UPLOAD -->
-        <div class="upload-section">
-            <input type="file" id="fileInput" accept="image/*">
-            <button class="upload-btn" id="uploadBtn"> Tải ảnh lên để chấm điểm</button>
+        <!-- BUTTONS -->
+        <div class="btn-container">
+            <button class="btn btn-secondary" id="switchCameraBtn">Chuyển camera</button>
+            <button class="btn btn-primary" id="analyzeBtn">Chấm điểm</button>
         </div>
 
         <!-- LOADING -->
@@ -346,54 +357,159 @@
     </div>
 
     <script>
-        const uploadBtn = document.getElementById('uploadBtn');
-        const fileInput = document.getElementById('fileInput');
-        const avatarImage = document.getElementById('avatarImage');
-        const avatarPlaceholder = document.getElementById('avatarPlaceholder');
-        const loading = document.getElementById('loading');
+        let camera, faceMesh, videoElement, canvasElement, canvasCtx;
+        let isCameraOn = false;
+        let currentFacingMode = 'user';
 
-        uploadBtn.addEventListener('click', () => {
-            fileInput.click();
-        });
+        // Khởi tạo MediaPipe Face Mesh
+        function initFaceMesh() {
+            faceMesh = new FaceMesh({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+                }
+            });
+            faceMesh.setOptions({
+                maxNumFaces: 1,
+                refineLandmarks: true,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+            faceMesh.onResults(onFaceMeshResults);
+        }
 
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
+        // Xử lý kết quả từ Face Mesh
+        function onFaceMeshResults(results) {
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+            
+            // Vẽ landmarks
+            drawConnectivity(results, canvasCtx);
+            
+            canvasCtx.restore();
+            
+            // Tính toán và chấm điểm
+            if (isAnalyzing) {
+                calculateScores(results);
+            }
+        }
 
-            loading.classList.add('show');
-            uploadBtn.disabled = true;
+        // Vẽ kết nối landmarks
+        function drawConnectivity(results, ctx) {
+            const landmarks = results.multiFaceLandmarks[0];
+            if (landmarks) {
+                drawLandmarks(landmarks, {color: '#5CE1E6', lineWidth: 2}, ctx);
+            }
+        }
 
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                avatarImage.src = event.target.result;
-                avatarImage.style.display = 'block';
-                avatarPlaceholder.style.display = 'none';
+        // Tính toán điểm
+        function calculateScores(results) {
+            const landmarks = results.multiFaceLandmarks[0];
+            if (!landmarks) return;
+            
+            // Lấy tọa độ các điểm
+            const points = landmarks.map(landmark => ({
+                x: landmark.x * videoElement.videoWidth,
+                y: landmark.y * videoElement.videoHeight
+            }));
+            
+            // Tính các chỉ số
+            const pslScore = calculatePSL(points);
+            const potentialScore = pslScore + (100 - pslScore) * 0.4;
+            
+            // Cập nhật giao diện
+            updateScores({
+                psl: pslScore,
+                pslTier: getTier(pslScore),
+                potential: potentialScore,
+                potentialTier: getTier(potentialScore),
+                eyes: 7.9,
+                eyesTier: 'Excellent',
+                midface: 7.8,
+                midfaceTier: 'Excellent',
+                lower: 7.9,
+                lowerTier: 'Excellent',
+                upper: 7.8,
+                upperTier: 'Excellent'
+            });
+            
+            // Dừng phân tích
+            isAnalyzing = false;
+            document.getElementById('analyzeBtn').disabled = false;
+            document.getElementById('loading').classList.remove('show');
+        }
+
+        // Tính điểm PSL
+        function calculatePSL(points) {
+            // 1. Tính tỷ lệ vàng khuôn mặt
+            const faceWidth = euclideanDistance(points[234], points[454]);
+            const faceHeight = euclideanDistance(points[10], points[152]);
+            const faceRatio = faceHeight / faceWidth;
+            const faceScore = goldenRatioScore(faceRatio, 1.618);
+            
+            // 2. Tính góc hàm
+            const jawAngle = calculateAngle(points[172], points[152], points[397]);
+            const jawScore = Math.max(0, 100 - Math.abs(jawAngle - 125) * 2);
+            
+            // 3. Tính tỷ lệ mắt
+            const eyeDistance = euclideanDistance(points[33], points[263]);
+            const eyeScore = goldenRatioScore(eyeDistance / faceWidth, 0.46);
+            
+            // 4. Tính tỷ lệ mũi
+            const noseLength = euclideanDistance(points[6], points[2]);
+            const noseWidth = euclideanDistance(points[98], points[327]);
+            const noseScore = goldenRatioScore(noseLength / noseWidth, 1.1);
+            
+            // 5. Tính da mặt (giả định)
+            const skinScore = 90;
+            
+            // Tính điểm tổng
+            const weights = {
+                face: 0.25,
+                jaw: 0.20,
+                eyes: 0.20,
+                nose: 0.15,
+                skin: 0.20
             };
-            reader.readAsDataURL(file);
+            
+            const total = (faceScore * weights.face) + 
+                          (jawScore * weights.jaw) + 
+                          (eyeScore * weights.eyes) + 
+                          (noseScore * weights.nose) + 
+                          (skinScore * weights.skin);
+            
+            return total / 10;
+        }
 
-            // DEMO DATA - Giống ảnh bạn gửi
-            setTimeout(() => {
-                const demoData = {
-                    psl: 8.0,
-                    pslTier: 'PSL God',
-                    potential: 8.0,
-                    potentialTier: 'PSL God',
-                    eyes: 7.9,
-                    eyesTier: 'Excellent',
-                    midface: 7.8,
-                    midfaceTier: 'Excellent',
-                    lower: 7.9,
-                    lowerTier: 'Excellent',
-                    upper: 7.8,
-                    upperTier: 'Excellent'
-                };
+        // Hàm toán học
+        function euclideanDistance(p1, p2) {
+            return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+        }
 
-                updateScores(demoData);
-                loading.classList.remove('show');
-                uploadBtn.disabled = false;
-            }, 2000);
-        });
+        function calculateAngle(p1, p2, p3) {
+            const v1 = {x: p1.x - p2.x, y: p1.y - p2.y};
+            const v2 = {x: p3.x - p2.x, y: p3.y - p2.y};
+            const dotProduct = v1.x * v2.x + v1.y * v2.y;
+            const magnitude = Math.sqrt(v1.x * v1.x + v1.y * v1.y) * Math.sqrt(v2.x * v2.x + v2.y * v2.y);
+            return Math.degrees(Math.acos(dotProduct / magnitude));
+        }
 
+        function goldenRatioScore(ratio, goldenRatio) {
+            if (ratio <= 0 || goldenRatio <= 0) return 50;
+            const deviation = Math.abs((ratio - goldenRatio) / goldenRatio);
+            return Math.max(0, 100 - (deviation * 100));
+        }
+
+        // Lấy tier
+        function getTier(score) {
+            if (score < 5.0) return 'LTN';
+            if (score < 6.0) return 'MTN';
+            if (score < 7.0) return 'HTN';
+            if (score < 8.0) return 'Chad';
+            return 'Gigachad';
+        }
+
+        // Cập nhật giao diện
         function updateScores(data) {
             const cards = ['psl', 'potential', 'eyes', 'midface', 'lower', 'upper'];
             
@@ -408,6 +524,114 @@
                 document.getElementById('card-' + card).classList.remove('hidden');
             });
         }
+
+        // Bắt đầu camera
+        async function startCamera() {
+            if (isCameraOn) return;
+            
+            try {
+                videoElement = document.getElementById('video');
+                canvasElement = document.createElement('canvas');
+                canvasCtx = canvasElement.getContext('2d');
+                
+                // Khởi tạo camera
+                const constraints = {
+                    video: {
+                        facingMode: currentFacingMode,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                };
+                
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                videoElement.srcObject = stream;
+                
+                // Chờ video load xong
+                await new Promise((resolve) => {
+                    videoElement.onloadedmetadata = resolve;
+                });
+                
+                videoElement.play();
+                document.getElementById('avatarPlaceholder').style.display = 'none';
+                videoElement.style.display = 'block';
+                
+                // Khởi tạo Face Mesh
+                initFaceMesh();
+                
+                // Bắt đầu phân tích
+                videoElement.addEventListener('play', () => {
+                    canvasElement.width = videoElement.videoWidth;
+                    canvasElement.height = videoElement.videoHeight;
+                    canvasElement.style.display = 'none';
+                    faceMesh.send({image: videoElement});
+                });
+                
+                isCameraOn = true;
+                document.getElementById('switchCameraBtn').disabled = false;
+            } catch (err) {
+                console.error("Error accessing camera: ", err);
+                alert("Không thể truy cập camera. Vui lòng cấp quyền và thử lại!");
+            }
+        }
+
+        // Chuyển camera
+        function switchCamera() {
+            if (!isCameraOn) return;
+            
+            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            document.getElementById('switchCameraBtn').textContent = 
+                currentFacingMode === 'user' ? 'Chuyển camera' : 'Chuyển camera (sau)';
+            
+            // Tắt camera hiện tại
+            if (videoElement && videoElement.srcObject) {
+                videoElement.srcObject.getTracks().forEach(track => track.stop());
+            }
+            
+            // Bật camera mới
+            startCamera();
+        }
+
+        // Chấm điểm
+        let isAnalyzing = false;
+        function analyzeFace() {
+            if (!isCameraOn || isAnalyzing) return;
+            
+            isAnalyzing = true;
+            document.getElementById('analyzeBtn').disabled = true;
+            document.getElementById('loading').classList.add('show');
+            
+            // Gửi frame hiện tại để phân tích
+            faceMesh.send({image: videoElement});
+        }
+
+        // Initial setup
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('switchCameraBtn').disabled = true;
+            document.getElementById('analyzeBtn').addEventListener('click', analyzeFace);
+            document.getElementById('switchCameraBtn').addEventListener('click', switchCamera);
+            
+            // Test data for demo
+            document.getElementById('analyzeBtn').addEventListener('click', () => {
+                document.getElementById('loading').classList.add('show');
+                setTimeout(() => {
+                    const demoData = {
+                        psl: 8.0,
+                        pslTier: 'PSL God',
+                        potential: 8.0,
+                        potentialTier: 'PSL God',
+                        eyes: 7.9,
+                        eyesTier: 'Excellent',
+                        midface: 7.8,
+                        midfaceTier: 'Excellent',
+                        lower: 7.9,
+                        lowerTier: 'Excellent',
+                        upper: 7.8,
+                        upperTier: 'Excellent'
+                    };
+                    updateScores(demoData);
+                }, 1500);
+            });
+        });
     </script>
 </body>
 </html>
