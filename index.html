@@ -23,11 +23,12 @@
         }
 
         .app-container {
-            max-width: 500px;
+            max-width: 450px;
             width: 100%;
-            background: #000;
-            border-radius: 20px;
-            padding: 30px 20px;
+            background: #0a0a0a;
+            border-radius: 25px;
+            padding: 25px 20px;
+            border: 1px solid #1a1a1a;
         }
 
         /* HEADER */
@@ -35,44 +36,44 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 15px;
-            margin-bottom: 30px;
+            gap: 12px;
+            margin-bottom: 25px;
         }
 
         .header-icon {
-            width: 50px;
-            height: 50px;
-            border: 2px solid #00CED1;
-            border-radius: 12px;
+            width: 45px;
+            height: 45px;
+            border: 2px solid #5CE1E6;
+            border-radius: 10px;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 24px;
+            font-size: 22px;
         }
 
         .header-title {
-            font-size: 2.5rem;
+            font-size: 2.2rem;
             font-weight: bold;
             letter-spacing: 2px;
         }
 
         .appstore-icon {
-            width: 50px;
-            height: 50px;
+            width: 45px;
+            height: 45px;
             background: #007AFF;
-            border-radius: 12px;
+            border-radius: 10px;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 24px;
+            font-size: 22px;
         }
 
         /* AVATAR */
         .avatar-container {
             position: relative;
-            width: 200px;
-            height: 200px;
-            margin: 0 auto 40px;
+            width: 180px;
+            height: 180px;
+            margin: 0 auto 30px;
         }
 
         .avatar {
@@ -83,114 +84,126 @@
             border: 3px solid #333;
         }
 
-        .play-button {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 60px;
-            height: 60px;
-            background: rgba(255, 255, 255, 0.9);
+        .avatar-placeholder {
+            width: 100%;
+            height: 100%;
             border-radius: 50%;
+            background: #1a1a1a;
+            border: 3px dashed #5CE1E6;
             display: flex;
             justify-content: center;
             align-items: center;
+            font-size: 3rem;
             cursor: pointer;
-            transition: transform 0.2s;
+            transition: all 0.3s;
         }
 
-        .play-button:hover {
-            transform: translate(-50%, -50%) scale(1.1);
+        .avatar-placeholder:hover {
+            background: #2a2a2a;
+            border-color: #00CED1;
         }
 
-        .play-button::after {
-            content: '';
-            width: 0;
-            height: 0;
-            border-left: 20px solid #000;
-            border-top: 12px solid transparent;
-            border-bottom: 12px solid transparent;
-            margin-left: 5px;
-        }
-
-        /* SCORE BOXES */
-        .score-container {
+        /* SCORE GRID */
+        .score-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 30px;
+            gap: 12px;
+            margin-bottom: 25px;
         }
 
-        .score-box {
-            background: #1a1a1a;
-            border: 2px solid #00CED1;
-            border-radius: 15px;
-            padding: 25px 20px;
-            text-align: left;
+        .score-card {
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 12px;
+            padding: 18px 15px;
+            position: relative;
+            overflow: hidden;
         }
 
-        .score-label {
-            font-size: 1.2rem;
+        .score-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #5CE1E6, #00CED1);
+        }
+
+        .score-card-label {
+            font-size: 0.85rem;
             font-weight: bold;
-            color: #00CED1;
-            margin-bottom: 10px;
+            color: #5CE1E6;
             letter-spacing: 1px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
         }
 
-        .score-value {
-            font-size: 3rem;
+        .score-card-value {
+            font-size: 2.2rem;
             font-weight: bold;
             color: white;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
         }
 
-        .score-tier {
-            font-size: 1.2rem;
-            color: #ccc;
-            margin-bottom: 15px;
+        .score-card-tier {
+            font-size: 0.9rem;
+            color: #888;
+            margin-bottom: 12px;
+        }
+
+        .score-card-tier .dot {
+            color: #5CE1E6;
+            margin-right: 5px;
         }
 
         .progress-bar {
             width: 100%;
-            height: 8px;
-            background: #333;
-            border-radius: 4px;
+            height: 6px;
+            background: #222;
+            border-radius: 3px;
             overflow: hidden;
         }
 
         .progress-fill {
             height: 100%;
-            background: #00CED1;
-            border-radius: 4px;
+            background: linear-gradient(90deg, #5CE1E6, #00CED1);
+            border-radius: 3px;
             transition: width 1s ease;
+            box-shadow: 0 0 10px rgba(92, 225, 230, 0.5);
         }
 
-        /* UPLOAD SECTION */
+        /* UPLOAD BUTTON */
         .upload-section {
             text-align: center;
-            margin-top: 30px;
+            margin-top: 20px;
         }
 
         .upload-btn {
-            background: #00CED1;
+            background: linear-gradient(135deg, #5CE1E6, #00CED1);
             color: #000;
             border: none;
-            padding: 15px 40px;
+            padding: 14px 35px;
             border-radius: 25px;
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s;
+            width: 100%;
         }
 
         .upload-btn:hover {
-            background: #00B8B8;
             transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(92, 225, 230, 0.3);
         }
 
         .upload-btn:disabled {
-            background: #666;
+            background: #555;
             cursor: not-allowed;
+        }
+
+        #fileInput {
+            display: none;
         }
 
         /* LOADING */
@@ -205,13 +218,13 @@
         }
 
         .spinner {
-            border: 4px solid rgba(0, 206, 209, 0.2);
-            border-top: 4px solid #00CED1;
+            border: 3px solid rgba(92, 225, 230, 0.2);
+            border-top: 3px solid #5CE1E6;
             border-radius: 50%;
-            width: 50px;
-            height: 50px;
+            width: 40px;
+            height: 40px;
             animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
+            margin: 0 auto 10px;
         }
 
         @keyframes spin {
@@ -219,15 +232,23 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* HIDDEN FILE INPUT */
-        #fileInput {
-            display: none;
+        /* HIDE SCORE CARDS INITIALLY */
+        .score-card.hidden {
+            opacity: 0.3;
+        }
+
+        .score-card.hidden .score-card-value {
+            color: #555;
         }
 
         /* RESPONSIVE */
         @media (max-width: 480px) {
-            .score-value {
-                font-size: 2.5rem;
+            .app-container {
+                padding: 20px 15px;
+            }
+            
+            .score-card-value {
+                font-size: 1.8rem;
             }
             
             .avatar-container {
@@ -241,33 +262,72 @@
     <div class="app-container">
         <!-- HEADER -->
         <div class="header">
-            <div class="header-icon"></div>
+            <div class="header-icon">👤</div>
             <div class="header-title">PSL</div>
             <div class="appstore-icon">🍎</div>
         </div>
 
         <!-- AVATAR -->
         <div class="avatar-container">
-            <img src="https://via.placeholder.com/200" alt="Avatar" class="avatar" id="avatarImage">
-            <div class="play-button" id="playButton"></div>
+            <div class="avatar-placeholder" id="avatarPlaceholder" onclick="document.getElementById('fileInput').click()">
+                📸
+            </div>
+            <img src="" alt="Avatar" class="avatar" id="avatarImage" style="display: none;">
         </div>
 
-        <!-- SCORE BOXES -->
-        <div class="score-container">
-            <div class="score-box">
-                <div class="score-label">PSL</div>
-                <div class="score-value" id="pslScore">0.0</div>
-                <div class="score-tier" id="pslTier">• Loading...</div>
+        <!-- SCORE GRID -->
+        <div class="score-grid">
+            <div class="score-card hidden" id="card-psl">
+                <div class="score-card-label">PSL</div>
+                <div class="score-card-value" id="pslScore">-</div>
+                <div class="score-card-tier"><span class="dot">•</span><span id="pslTier">Chưa chấm</span></div>
                 <div class="progress-bar">
                     <div class="progress-fill" id="pslProgress" style="width: 0%"></div>
                 </div>
             </div>
-            <div class="score-box">
-                <div class="score-label">POTENTIAL</div>
-                <div class="score-value" id="potentialScore">0.0</div>
-                <div class="score-tier" id="potentialTier">• Loading...</div>
+            
+            <div class="score-card hidden" id="card-potential">
+                <div class="score-card-label">POTENTIAL</div>
+                <div class="score-card-value" id="potentialScore">-</div>
+                <div class="score-card-tier"><span class="dot">•</span><span id="potentialTier">Chưa chấm</span></div>
                 <div class="progress-bar">
                     <div class="progress-fill" id="potentialProgress" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="score-card hidden" id="card-eyes">
+                <div class="score-card-label">EYES</div>
+                <div class="score-card-value" id="eyesScore">-</div>
+                <div class="score-card-tier"><span class="dot">•</span><span id="eyesTier">Chưa chấm</span></div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="eyesProgress" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="score-card hidden" id="card-midface">
+                <div class="score-card-label">MIDFACE</div>
+                <div class="score-card-value" id="midfaceScore">-</div>
+                <div class="score-card-tier"><span class="dot">•</span><span id="midfaceTier">Chưa chấm</span></div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="midfaceProgress" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="score-card hidden" id="card-lower">
+                <div class="score-card-label">LOWER THIRD</div>
+                <div class="score-card-value" id="lowerScore">-</div>
+                <div class="score-card-tier"><span class="dot">•</span><span id="lowerTier">Chưa chấm</span></div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="lowerProgress" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="score-card hidden" id="card-upper">
+                <div class="score-card-label">UPPER THIRD</div>
+                <div class="score-card-value" id="upperScore">-</div>
+                <div class="score-card-tier"><span class="dot">•</span><span id="upperTier">Chưa chấm</span></div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="upperProgress" style="width: 0%"></div>
                 </div>
             </div>
         </div>
@@ -275,13 +335,13 @@
         <!-- UPLOAD -->
         <div class="upload-section">
             <input type="file" id="fileInput" accept="image/*">
-            <button class="upload-btn" id="uploadBtn">📸 Tải ảnh lên</button>
+            <button class="upload-btn" id="uploadBtn"> Tải ảnh lên để chấm điểm</button>
         </div>
 
         <!-- LOADING -->
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p>Đang phân tích...</p>
+            <p style="color: #5CE1E6;">Đang phân tích khuôn mặt...</p>
         </div>
     </div>
 
@@ -289,37 +349,43 @@
         const uploadBtn = document.getElementById('uploadBtn');
         const fileInput = document.getElementById('fileInput');
         const avatarImage = document.getElementById('avatarImage');
+        const avatarPlaceholder = document.getElementById('avatarPlaceholder');
         const loading = document.getElementById('loading');
 
-        // Click upload button
         uploadBtn.addEventListener('click', () => {
             fileInput.click();
         });
 
-        // Handle file select
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
 
-            // Show loading
             loading.classList.add('show');
             uploadBtn.disabled = true;
 
-            // Display image
             const reader = new FileReader();
             reader.onload = (event) => {
                 avatarImage.src = event.target.result;
+                avatarImage.style.display = 'block';
+                avatarPlaceholder.style.display = 'none';
             };
             reader.readAsDataURL(file);
 
-            // Simulate API call (2 seconds)
+            // DEMO DATA - Giống ảnh bạn gửi
             setTimeout(() => {
-                // DEMO DATA - Thay bằng API thật sau
                 const demoData = {
-                    psl: 7.1,
-                    pslTier: 'Chad',
-                    potential: 7.6,
-                    potentialTier: 'True Adam'
+                    psl: 8.0,
+                    pslTier: 'PSL God',
+                    potential: 8.0,
+                    potentialTier: 'PSL God',
+                    eyes: 7.9,
+                    eyesTier: 'Excellent',
+                    midface: 7.8,
+                    midfaceTier: 'Excellent',
+                    lower: 7.9,
+                    lowerTier: 'Excellent',
+                    upper: 7.8,
+                    upperTier: 'Excellent'
                 };
 
                 updateScores(demoData);
@@ -329,21 +395,19 @@
         });
 
         function updateScores(data) {
-            // PSL Score
-            document.getElementById('pslScore').textContent = data.psl.toFixed(1);
-            document.getElementById('pslTier').textContent = `• ${data.pslTier}`;
-            document.getElementById('pslProgress').style.width = `${(data.psl / 10) * 100}%`;
-
-            // Potential Score
-            document.getElementById('potentialScore').textContent = data.potential.toFixed(1);
-            document.getElementById('potentialTier').textContent = `• ${data.potentialTier}`;
-            document.getElementById('potentialProgress').style.width = `${(data.potential / 10) * 100}%`;
+            const cards = ['psl', 'potential', 'eyes', 'midface', 'lower', 'upper'];
+            
+            cards.forEach(card => {
+                const score = data[card];
+                const tier = data[card + 'Tier'];
+                const maxScore = 10;
+                
+                document.getElementById(card + 'Score').textContent = score.toFixed(1);
+                document.getElementById(card + 'Tier').textContent = tier;
+                document.getElementById(card + 'Progress').style.width = `${(score / maxScore) * 100}%`;
+                document.getElementById('card-' + card).classList.remove('hidden');
+            });
         }
-
-        // Play button click
-        document.getElementById('playButton').addEventListener('click', () => {
-            alert('Tính năng video đang phát triển!');
-        });
     </script>
 </body>
 </html>
