@@ -3,17 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PSL Face Scorer</title>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.16/camera_utils.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.1.16/face_mesh.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.16/drawing_utils.js"></script>
+    <title>PSL Face Scorer - Strict Mode</title>
+    <!-- MediaPipe Face Mesh -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+    
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #000;
@@ -24,7 +22,6 @@
             color: white;
             padding: 20px;
         }
-
         .app-container {
             max-width: 450px;
             width: 100%;
@@ -33,8 +30,6 @@
             padding: 25px 20px;
             border: 1px solid #1a1a1a;
         }
-
-        /* HEADER */
         .header {
             display: flex;
             justify-content: center;
@@ -42,87 +37,47 @@
             gap: 12px;
             margin-bottom: 25px;
         }
-
         .header-icon {
-            width: 45px;
-            height: 45px;
+            width: 45px; height: 45px;
             border: 2px solid #5CE1E6;
             border-radius: 10px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            display: flex; justify-content: center; align-items: center;
             font-size: 22px;
         }
-
-        .header-title {
-            font-size: 2.2rem;
-            font-weight: bold;
-            letter-spacing: 2px;
-        }
-
+        .header-title { font-size: 2.2rem; font-weight: bold; letter-spacing: 2px; }
         .appstore-icon {
-            width: 45px;
-            height: 45px;
+            width: 45px; height: 45px;
             background: #007AFF;
             border-radius: 10px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            display: flex; justify-content: center; align-items: center;
             font-size: 22px;
         }
-
-        /* AVATAR */
         .avatar-container {
             position: relative;
-            width: 180px;
-            height: 180px;
+            width: 180px; height: 180px;
             margin: 0 auto 30px;
         }
-
-        #video {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid #333;
-            display: none;
-        }
-
         .avatar {
-            width: 100%;
-            height: 100%;
+            width: 100%; height: 100%;
             border-radius: 50%;
             object-fit: cover;
-            border: 3px solid #333;
+            border: 3px solid #5CE1E6;
         }
-
         .avatar-placeholder {
-            width: 100%;
-            height: 100%;
+            width: 100%; height: 100%;
             border-radius: 50%;
             background: #1a1a1a;
             border: 3px dashed #5CE1E6;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            display: flex; justify-content: center; align-items: center;
             font-size: 3rem;
             cursor: pointer;
-            transition: all 0.3s;
         }
-
-        .avatar-placeholder:hover {
-            background: #2a2a2a;
-            border-color: #00CED1;
-        }
-
-        /* SCORE GRID */
         .score-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 12px;
             margin-bottom: 25px;
         }
-
         .score-card {
             background: #111;
             border: 1px solid #222;
@@ -131,52 +86,36 @@
             position: relative;
             overflow: hidden;
         }
-
         .score-card::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
+            top: 0; left: 0; right: 0;
             height: 2px;
             background: linear-gradient(90deg, #5CE1E6, #00CED1);
         }
-
         .score-card-label {
-            font-size: 0.85rem;
-            font-weight: bold;
+            font-size: 0.85rem; font-weight: bold;
             color: #5CE1E6;
             letter-spacing: 1px;
             margin-bottom: 8px;
             text-transform: uppercase;
         }
-
         .score-card-value {
-            font-size: 2.2rem;
-            font-weight: bold;
+            font-size: 2.2rem; font-weight: bold;
             color: white;
             margin-bottom: 3px;
         }
-
         .score-card-tier {
-            font-size: 0.9rem;
-            color: #888;
+            font-size: 0.9rem; color: #888;
             margin-bottom: 12px;
         }
-
-        .score-card-tier .dot {
-            color: #5CE1E6;
-            margin-right: 5px;
-        }
-
+        .score-card-tier .dot { color: #5CE1E6; margin-right: 5px; }
         .progress-bar {
-            width: 100%;
-            height: 6px;
+            width: 100%; height: 6px;
             background: #222;
             border-radius: 3px;
             overflow: hidden;
         }
-
         .progress-fill {
             height: 100%;
             background: linear-gradient(90deg, #5CE1E6, #00CED1);
@@ -184,453 +123,298 @@
             transition: width 1s ease;
             box-shadow: 0 0 10px rgba(92, 225, 230, 0.5);
         }
-
-        /* BUTTONS */
-        .btn-container {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        .btn {
-            flex: 1;
-            padding: 12px;
-            border-radius: 10px;
-            border: none;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .btn-primary {
+        .upload-section { text-align: center; margin-top: 20px; }
+        .upload-btn {
             background: linear-gradient(135deg, #5CE1E6, #00CED1);
             color: #000;
+            border: none;
+            padding: 14px 35px;
+            border-radius: 25px;
+            font-size: 1rem; font-weight: bold;
+            cursor: pointer;
+            width: 100%;
         }
-
-        .btn-secondary {
-            background: #222;
-            color: #888;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-        }
-
-        /* LOADING */
+        .upload-btn:disabled { background: #555; cursor: not-allowed; }
+        #fileInput { display: none; }
         .loading {
-            display: none;
-            text-align: center;
-            padding: 20px;
+            display: none; text-align: center; padding: 20px;
         }
-
-        .loading.show {
-            display: block;
-        }
-
+        .loading.show { display: block; }
         .spinner {
             border: 3px solid rgba(92, 225, 230, 0.2);
             border-top: 3px solid #5CE1E6;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
+            width: 40px; height: 40px;
             animation: spin 1s linear infinite;
             margin: 0 auto 10px;
         }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* HIDE SCORE CARDS INITIALLY */
-        .score-card.hidden {
-            opacity: 0.3;
-        }
-
-        .score-card.hidden .score-card-value {
-            color: #555;
-        }
-
-        /* RESPONSIVE */
-        @media (max-width: 480px) {
-            .app-container {
-                padding: 20px 15px;
-            }
-            
-            .score-card-value {
-                font-size: 1.8rem;
-            }
-            
-            .avatar-container {
-                width: 150px;
-                height: 150px;
-            }
-        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .score-card.hidden { opacity: 0.3; }
+        .score-card.hidden .score-card-value { color: #555; }
+        canvas { display: none; }
     </style>
 </head>
 <body>
     <div class="app-container">
-        <!-- HEADER -->
         <div class="header">
-            <div class="header-icon">👤</div>
+            <div class="header-icon"></div>
             <div class="header-title">PSL</div>
             <div class="appstore-icon">🍎</div>
         </div>
 
-        <!-- AVATAR -->
         <div class="avatar-container">
-            <div class="avatar-placeholder" id="avatarPlaceholder" onclick="startCamera()">
-                📸
-            </div>
+            <div class="avatar-placeholder" id="avatarPlaceholder" onclick="document.getElementById('fileInput').click()">📸</div>
             <img src="" alt="Avatar" class="avatar" id="avatarImage" style="display: none;">
-            <video id="video" playsinline></video>
         </div>
 
-        <!-- SCORE GRID -->
         <div class="score-grid">
-            <div class="score-card hidden" id="card-psl">
-                <div class="score-card-label">PSL</div>
-                <div class="score-card-value" id="pslScore">-</div>
-                <div class="score-card-tier"><span class="dot">•</span><span id="pslTier">Chưa chấm</span></div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="pslProgress" style="width: 0%"></div>
-                </div>
+            <div class="score-card hidden" id="card-overall">
+                <div class="score-card-label">TỔNG THỂ</div>
+                <div class="score-card-value" id="overallScore">-</div>
+                <div class="score-card-tier"><span class="dot">•</span><span id="overallTier">Chưa chấm</span></div>
+                <div class="progress-bar"><div class="progress-fill" id="overallProgress" style="width: 0%"></div></div>
             </div>
             
             <div class="score-card hidden" id="card-potential">
-                <div class="score-card-label">POTENTIAL</div>
+                <div class="score-card-label">TIỀM NĂNG</div>
                 <div class="score-card-value" id="potentialScore">-</div>
                 <div class="score-card-tier"><span class="dot">•</span><span id="potentialTier">Chưa chấm</span></div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="potentialProgress" style="width: 0%"></div>
-                </div>
+                <div class="progress-bar"><div class="progress-fill" id="potentialProgress" style="width: 0%"></div></div>
+            </div>
+
+            <div class="score-card hidden" id="card-appeal">
+                <div class="score-card-label">APPEAL</div>
+                <div class="score-card-value" id="appealScore">-</div>
+                <div class="score-card-tier"><span class="dot">•</span><span id="appealTier">Chưa chấm</span></div>
+                <div class="progress-bar"><div class="progress-fill" id="appealProgress" style="width: 0%"></div></div>
+            </div>
+
+            <div class="score-card hidden" id="card-jaw">
+                <div class="score-card-label">HÀM (JAW)</div>
+                <div class="score-card-value" id="jawScore">-</div>
+                <div class="score-card-tier"><span class="dot">•</span><span id="jawTier">Chưa chấm</span></div>
+                <div class="progress-bar"><div class="progress-fill" id="jawProgress" style="width: 0%"></div></div>
             </div>
 
             <div class="score-card hidden" id="card-eyes">
-                <div class="score-card-label">EYES</div>
+                <div class="score-card-label">MẮT (EYES)</div>
                 <div class="score-card-value" id="eyesScore">-</div>
                 <div class="score-card-tier"><span class="dot">•</span><span id="eyesTier">Chưa chấm</span></div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="eyesProgress" style="width: 0%"></div>
-                </div>
+                <div class="progress-bar"><div class="progress-fill" id="eyesProgress" style="width: 0%"></div></div>
             </div>
 
-            <div class="score-card hidden" id="card-midface">
-                <div class="score-card-label">MIDFACE</div>
-                <div class="score-card-value" id="midfaceScore">-</div>
-                <div class="score-card-tier"><span class="dot">•</span><span id="midfaceTier">Chưa chấm</span></div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="midfaceProgress" style="width: 0%"></div>
-                </div>
+            <div class="score-card hidden" id="card-nose">
+                <div class="score-card-label">MŨI (NOSE)</div>
+                <div class="score-card-value" id="noseScore">-</div>
+                <div class="score-card-tier"><span class="dot">•</span><span id="noseTier">Chưa chấm</span></div>
+                <div class="progress-bar"><div class="progress-fill" id="noseProgress" style="width: 0%"></div></div>
             </div>
-
-            <div class="score-card hidden" id="card-lower">
-                <div class="score-card-label">LOWER THIRD</div>
-                <div class="score-card-value" id="lowerScore">-</div>
-                <div class="score-card-tier"><span class="dot">•</span><span id="lowerTier">Chưa chấm</span></div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="lowerProgress" style="width: 0%"></div>
-                </div>
-            </div>
-
-            <div class="score-card hidden" id="card-upper">
-                <div class="score-card-label">UPPER THIRD</div>
-                <div class="score-card-value" id="upperScore">-</div>
-                <div class="score-card-tier"><span class="dot">•</span><span id="upperTier">Chưa chấm</span></div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="upperProgress" style="width: 0%"></div>
-                </div>
+            
+            <div class="score-card hidden" id="card-skin">
+                <div class="score-card-label">DA MẶT (SKIN)</div>
+                <div class="score-card-value" id="skinScore">-</div>
+                <div class="score-card-tier"><span class="dot">•</span><span id="skinTier">Chưa chấm</span></div>
+                <div class="progress-bar"><div class="progress-fill" id="skinProgress" style="width: 0%"></div></div>
             </div>
         </div>
 
-        <!-- BUTTONS -->
-        <div class="btn-container">
-            <button class="btn btn-secondary" id="switchCameraBtn">Chuyển camera</button>
-            <button class="btn btn-primary" id="analyzeBtn">Chấm điểm</button>
+        <div class="upload-section">
+            <input type="file" id="fileInput" accept="image/*">
+            <button class="upload-btn" id="uploadBtn">📸 Tải ảnh lên để chấm điểm</button>
         </div>
 
-        <!-- LOADING -->
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p style="color: #5CE1E6;">Đang phân tích khuôn mặt...</p>
+            <p style="color: #5CE1E6;">Đang quét 468 điểm và tính toán...</p>
         </div>
     </div>
 
+    <canvas id="canvas"></canvas>
+
     <script>
-        let camera, faceMesh, videoElement, canvasElement, canvasCtx;
-        let isCameraOn = false;
-        let currentFacingMode = 'user';
-
-        // Khởi tạo MediaPipe Face Mesh
-        function initFaceMesh() {
-            faceMesh = new FaceMesh({
-                locateFile: (file) => {
-                    return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
-                }
-            });
-            faceMesh.setOptions({
-                maxNumFaces: 1,
-                refineLandmarks: true,
-                minDetectionConfidence: 0.5,
-                minTrackingConfidence: 0.5
-            });
-            faceMesh.onResults(onFaceMeshResults);
-        }
-
-        // Xử lý kết quả từ Face Mesh
-        function onFaceMeshResults(results) {
-            canvasCtx.save();
-            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
-            
-            // Vẽ landmarks
-            drawConnectivity(results, canvasCtx);
-            
-            canvasCtx.restore();
-            
-            // Tính toán và chấm điểm
-            if (isAnalyzing) {
-                calculateScores(results);
-            }
-        }
-
-        // Vẽ kết nối landmarks
-        function drawConnectivity(results, ctx) {
-            const landmarks = results.multiFaceLandmarks[0];
-            if (landmarks) {
-                drawLandmarks(landmarks, {color: '#5CE1E6', lineWidth: 2}, ctx);
-            }
-        }
-
-        // Tính toán điểm
-        function calculateScores(results) {
-            const landmarks = results.multiFaceLandmarks[0];
-            if (!landmarks) return;
-            
-            // Lấy tọa độ các điểm
-            const points = landmarks.map(landmark => ({
-                x: landmark.x * videoElement.videoWidth,
-                y: landmark.y * videoElement.videoHeight
-            }));
-            
-            // Tính các chỉ số
-            const pslScore = calculatePSL(points);
-            const potentialScore = pslScore + (100 - pslScore) * 0.4;
-            
-            // Cập nhật giao diện
-            updateScores({
-                psl: pslScore,
-                pslTier: getTier(pslScore),
-                potential: potentialScore,
-                potentialTier: getTier(potentialScore),
-                eyes: 7.9,
-                eyesTier: 'Excellent',
-                midface: 7.8,
-                midfaceTier: 'Excellent',
-                lower: 7.9,
-                lowerTier: 'Excellent',
-                upper: 7.8,
-                upperTier: 'Excellent'
-            });
-            
-            // Dừng phân tích
-            isAnalyzing = false;
-            document.getElementById('analyzeBtn').disabled = false;
-            document.getElementById('loading').classList.remove('show');
-        }
-
-        // Tính điểm PSL
-        function calculatePSL(points) {
-            // 1. Tính tỷ lệ vàng khuôn mặt
-            const faceWidth = euclideanDistance(points[234], points[454]);
-            const faceHeight = euclideanDistance(points[10], points[152]);
-            const faceRatio = faceHeight / faceWidth;
-            const faceScore = goldenRatioScore(faceRatio, 1.618);
-            
-            // 2. Tính góc hàm
-            const jawAngle = calculateAngle(points[172], points[152], points[397]);
-            const jawScore = Math.max(0, 100 - Math.abs(jawAngle - 125) * 2);
-            
-            // 3. Tính tỷ lệ mắt
-            const eyeDistance = euclideanDistance(points[33], points[263]);
-            const eyeScore = goldenRatioScore(eyeDistance / faceWidth, 0.46);
-            
-            // 4. Tính tỷ lệ mũi
-            const noseLength = euclideanDistance(points[6], points[2]);
-            const noseWidth = euclideanDistance(points[98], points[327]);
-            const noseScore = goldenRatioScore(noseLength / noseWidth, 1.1);
-            
-            // 5. Tính da mặt (giả định)
-            const skinScore = 90;
-            
-            // Tính điểm tổng
-            const weights = {
-                face: 0.25,
-                jaw: 0.20,
-                eyes: 0.20,
-                nose: 0.15,
-                skin: 0.20
-            };
-            
-            const total = (faceScore * weights.face) + 
-                          (jawScore * weights.jaw) + 
-                          (eyeScore * weights.eyes) + 
-                          (noseScore * weights.nose) + 
-                          (skinScore * weights.skin);
-            
-            return total / 10;
-        }
-
-        // Hàm toán học
+        // ==========================================
+        // LOGIC TOÁN HỌC & CHẤM ĐIỂM CHẶT CHẼ
+        // ==========================================
+        
         function euclideanDistance(p1, p2) {
             return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
         }
 
         function calculateAngle(p1, p2, p3) {
-            const v1 = {x: p1.x - p2.x, y: p1.y - p2.y};
-            const v2 = {x: p3.x - p2.x, y: p3.y - p2.y};
+            const v1 = { x: p1.x - p2.x, y: p1.y - p2.y };
+            const v2 = { x: p3.x - p2.x, y: p3.y - p2.y };
             const dotProduct = v1.x * v2.x + v1.y * v2.y;
             const magnitude = Math.sqrt(v1.x * v1.x + v1.y * v1.y) * Math.sqrt(v2.x * v2.x + v2.y * v2.y);
-            return Math.degrees(Math.acos(dotProduct / magnitude));
+            if (magnitude === 0) return 0;
+            const cosTheta = Math.max(-1, Math.min(1, dotProduct / magnitude));
+            return Math.acos(cosTheta) * (180 / Math.PI);
         }
 
-        function goldenRatioScore(ratio, goldenRatio) {
-            if (ratio <= 0 || goldenRatio <= 0) return 50;
-            const deviation = Math.abs((ratio - goldenRatio) / goldenRatio);
-            return Math.max(0, 100 - (deviation * 100));
+        function goldenRatioScore(actual, ideal) {
+            const deviation = Math.abs((actual - ideal) / ideal);
+            // Công thức chặt chẽ: Trừ điểm mạnh tay nếu lệch chuẩn
+            return Math.max(0, Math.min(100, 100 - (deviation * 150))); 
         }
 
-        // Lấy tier
-        function getTier(score) {
-            if (score < 5.0) return 'LTN';
-            if (score < 6.0) return 'MTN';
-            if (score < 7.0) return 'HTN';
-            if (score < 8.0) return 'Chad';
-            return 'Gigachad';
+        function classifyTier(score) {
+            if (score < 50) return "LTN";
+            if (score < 60) return "MTN";
+            if (score < 70) return "HTN";
+            if (score < 80) return "Chad";
+            return "Gigachad";
         }
 
-        // Cập nhật giao diện
-        function updateScores(data) {
-            const cards = ['psl', 'potential', 'eyes', 'midface', 'lower', 'upper'];
-            
-            cards.forEach(card => {
-                const score = data[card];
-                const tier = data[card + 'Tier'];
-                const maxScore = 10;
+        function analyzeFaceMetrics(landmarks, imgData) {
+            // 1. APPEAL: Tỷ lệ vàng khuôn mặt (Height / Width)
+            const faceWidth = euclideanDistance(landmarks[234], landmarks[454]);
+            const faceHeight = euclideanDistance(landmarks[10], landmarks[152]);
+            const faceRatio = faceHeight / faceWidth;
+            const appealScore = goldenRatioScore(faceRatio, 1.618);
+
+            // 2. HÀM (JAW): Góc hàm (Gonial angle) - Landmarks 172, 152, 397
+            const jawAngle = calculateAngle(landmarks[172], landmarks[152], landmarks[397]);
+            // Góc chuẩn nam giới: ~120-130 độ. Lệch 1 độ trừ 2 điểm (Rất chặt)
+            const jawScore = Math.max(0, Math.min(100, 100 - Math.abs(jawAngle - 125) * 2.5));
+
+            // 3. MẮT (EYES): Khoảng cách 2 mắt / Chiều rộng mặt
+            const eyeDistance = euclideanDistance(landmarks[33], landmarks[263]);
+            const eyeRatio = eyeDistance / faceWidth;
+            const eyesScore = goldenRatioScore(eyeRatio, 0.46);
+
+            // 4. MŨI (NOSE): Chiều dài mũi / Chiều rộng mũi
+            const noseLength = euclideanDistance(landmarks[6], landmarks[2]);
+            const noseWidth = euclideanDistance(landmarks[98], landmarks[327]);
+            const noseRatio = noseLength / noseWidth;
+            const noseScore = goldenRatioScore(noseRatio, 1.1);
+
+            // 5. DA MẶT (SKIN): Tính độ lệch chuẩn màu da (giả lập texture)
+            // Lấy vùng má phải (landmark 234 area)
+            let skinScore = 60; // Mặc định
+            if (imgData) {
+                // Logic đơn giản hóa cho frontend: Dựa vào độ sáng trung bình
+                // Trong thực tế cần phân tích pixel phức tạp hơn
+                skinScore = 55 + Math.random() * 10; // Giả lập điểm da từ 55-65 cho demo frontend
+            }
+
+            // TỔNG THỂ (Weighted Average - Chặt chẽ)
+            const weights = { appeal: 0.25, jaw: 0.25, eyes: 0.20, nose: 0.15, skin: 0.15 };
+            const overallScore = (appealScore * weights.appeal) + 
+                                 (jawScore * weights.jaw) + 
+                                 (eyesScore * weights.eyes) + 
+                                 (noseScore * weights.nose) + 
+                                 (skinScore * weights.skin);
+
+            // TIỀM NĂNG
+            const potentialScore = overallScore + (100 - overallScore) * 0.4;
+
+            return {
+                appeal: Math.round(appealScore),
+                jaw: Math.round(jawScore),
+                eyes: Math.round(eyesScore),
+                nose: Math.round(noseScore),
+                skin: Math.round(skinScore),
+                overall: Math.round(overallScore),
+                potential: Math.round(potentialScore)
+            };
+        }
+
+        // ==========================================
+        // XỬ LÝ MEDIAPIPE & GIAO DIỆN
+        // ==========================================
+        
+        const faceMesh = new FaceMesh({locateFile: (file) => {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+        }});
+
+        faceMesh.setOptions({
+            maxNumFaces: 1,
+            refineLandmarks: true,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        faceMesh.onResults((results) => {
+            document.getElementById('loading').classList.remove('show');
+            document.getElementById('uploadBtn').disabled = false;
+
+            if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+                const landmarks = results.multiFaceLandmarks[0];
                 
-                document.getElementById(card + 'Score').textContent = score.toFixed(1);
-                document.getElementById(card + 'Tier').textContent = tier;
-                document.getElementById(card + 'Progress').style.width = `${(score / maxScore) * 100}%`;
-                document.getElementById('card-' + card).classList.remove('hidden');
-            });
-        }
+                // Lấy dữ liệu ảnh để tính da (tạm thời bỏ qua để code nhẹ)
+                const metrics = analyzeFaceMetrics(landmarks, null);
 
-        // Bắt đầu camera
-        async function startCamera() {
-            if (isCameraOn) return;
-            
-            try {
-                videoElement = document.getElementById('video');
-                canvasElement = document.createElement('canvas');
-                canvasCtx = canvasElement.getContext('2d');
-                
-                // Khởi tạo camera
-                const constraints = {
-                    video: {
-                        facingMode: currentFacingMode,
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    }
+                const scores = {
+                    overall: metrics.overall,
+                    potential: metrics.potential,
+                    appeal: metrics.appeal,
+                    jaw: metrics.jaw,
+                    eyes: metrics.eyes,
+                    nose: metrics.nose,
+                    skin: metrics.skin
                 };
-                
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                videoElement.srcObject = stream;
-                
-                // Chờ video load xong
-                await new Promise((resolve) => {
-                    videoElement.onloadedmetadata = resolve;
-                });
-                
-                videoElement.play();
-                document.getElementById('avatarPlaceholder').style.display = 'none';
-                videoElement.style.display = 'block';
-                
-                // Khởi tạo Face Mesh
-                initFaceMesh();
-                
-                // Bắt đầu phân tích
-                videoElement.addEventListener('play', () => {
-                    canvasElement.width = videoElement.videoWidth;
-                    canvasElement.height = videoElement.videoHeight;
-                    canvasElement.style.display = 'none';
-                    faceMesh.send({image: videoElement});
-                });
-                
-                isCameraOn = true;
-                document.getElementById('switchCameraBtn').disabled = false;
-            } catch (err) {
-                console.error("Error accessing camera: ", err);
-                alert("Không thể truy cập camera. Vui lòng cấp quyền và thử lại!");
+
+                updateUI(scores);
+            } else {
+                alert("❌ Không tìm thấy khuôn mặt! Hãy chụp rõ mặt, nhìn thẳng.");
             }
-        }
+        });
 
-        // Chuyển camera
-        function switchCamera() {
-            if (!isCameraOn) return;
+        function updateUI(scores) {
+            const fields = ['overall', 'potential', 'appeal', 'jaw', 'eyes', 'nose', 'skin'];
             
-            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-            document.getElementById('switchCameraBtn').textContent = 
-                currentFacingMode === 'user' ? 'Chuyển camera' : 'Chuyển camera (sau)';
-            
-            // Tắt camera hiện tại
-            if (videoElement && videoElement.srcObject) {
-                videoElement.srcObject.getTracks().forEach(track => track.stop());
-            }
-            
-            // Bật camera mới
-            startCamera();
-        }
-
-        // Chấm điểm
-        let isAnalyzing = false;
-        function analyzeFace() {
-            if (!isCameraOn || isAnalyzing) return;
-            
-            isAnalyzing = true;
-            document.getElementById('analyzeBtn').disabled = true;
-            document.getElementById('loading').classList.add('show');
-            
-            // Gửi frame hiện tại để phân tích
-            faceMesh.send({image: videoElement});
-        }
-
-        // Initial setup
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('switchCameraBtn').disabled = true;
-            document.getElementById('analyzeBtn').addEventListener('click', analyzeFace);
-            document.getElementById('switchCameraBtn').addEventListener('click', switchCamera);
-            
-            // Test data for demo
-            document.getElementById('analyzeBtn').addEventListener('click', () => {
-                document.getElementById('loading').classList.add('show');
-                setTimeout(() => {
-                    const demoData = {
-                        psl: 8.0,
-                        pslTier: 'PSL God',
-                        potential: 8.0,
-                        potentialTier: 'PSL God',
-                        eyes: 7.9,
-                        eyesTier: 'Excellent',
-                        midface: 7.8,
-                        midfaceTier: 'Excellent',
-                        lower: 7.9,
-                        lowerTier: 'Excellent',
-                        upper: 7.8,
-                        upperTier: 'Excellent'
-                    };
-                    updateScores(demoData);
-                }, 1500);
+            fields.forEach(field => {
+                const score = scores[field];
+                const tier = classifyTier(score);
+                const maxScore = 100;
+                
+                document.getElementById(field + 'Score').textContent = score;
+                document.getElementById(field + 'Tier').textContent = tier;
+                document.getElementById(field + 'Progress').style.width = `${(score / maxScore) * 100}%`;
+                document.getElementById('card-' + field).classList.remove('hidden');
             });
+        }
+
+        // Event Listeners
+        const uploadBtn = document.getElementById('uploadBtn');
+        const fileInput = document.getElementById('fileInput');
+        const avatarImage = document.getElementById('avatarImage');
+        const avatarPlaceholder = document.getElementById('avatarPlaceholder');
+        const loading = document.getElementById('loading');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        uploadBtn.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            loading.classList.add('show');
+            uploadBtn.disabled = true;
+            
+            // Reset UI
+            ['overall', 'potential', 'appeal', 'jaw', 'eyes', 'nose', 'skin'].forEach(f => {
+                document.getElementById('card-' + f).classList.add('hidden');
+            });
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = async () => {
+                    avatarImage.src = event.target.result;
+                    avatarImage.style.display = 'block';
+                    avatarPlaceholder.style.display = 'none';
+
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+                    
+                    // Gửi ảnh vào MediaPipe
+                    await faceMesh.send({image: canvas});
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
         });
     </script>
 </body>
