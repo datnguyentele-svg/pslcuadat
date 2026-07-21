@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PSL Face Scorer - Strict Mode</title>
-    <!-- MediaPipe Face Mesh -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
@@ -233,7 +232,7 @@
 
     <script>
         // ==========================================
-        // LOGIC TOÁN HỌC & CHẤM ĐIỂM CHẶT CHẼ
+        // THUẬT TOÁN CHẤM ĐIỂM CHẶT CHẼ
         // ==========================================
         
         function euclideanDistance(p1, p2) {
@@ -252,7 +251,7 @@
 
         function goldenRatioScore(actual, ideal) {
             const deviation = Math.abs((actual - ideal) / ideal);
-            // Công thức chặt chẽ: Trừ điểm mạnh tay nếu lệch chuẩn
+            // Công thức chặt chẽ: Lệch 1% trừ 1.5 điểm (rất nghiêm khắc)
             return Math.max(0, Math.min(100, 100 - (deviation * 150))); 
         }
 
@@ -260,162 +259,4 @@
             if (score < 50) return "LTN";
             if (score < 60) return "MTN";
             if (score < 70) return "HTN";
-            if (score < 80) return "Chad";
-            return "Gigachad";
-        }
-
-        function analyzeFaceMetrics(landmarks, imgData) {
-            // 1. APPEAL: Tỷ lệ vàng khuôn mặt (Height / Width)
-            const faceWidth = euclideanDistance(landmarks[234], landmarks[454]);
-            const faceHeight = euclideanDistance(landmarks[10], landmarks[152]);
-            const faceRatio = faceHeight / faceWidth;
-            const appealScore = goldenRatioScore(faceRatio, 1.618);
-
-            // 2. HÀM (JAW): Góc hàm (Gonial angle) - Landmarks 172, 152, 397
-            const jawAngle = calculateAngle(landmarks[172], landmarks[152], landmarks[397]);
-            // Góc chuẩn nam giới: ~120-130 độ. Lệch 1 độ trừ 2 điểm (Rất chặt)
-            const jawScore = Math.max(0, Math.min(100, 100 - Math.abs(jawAngle - 125) * 2.5));
-
-            // 3. MẮT (EYES): Khoảng cách 2 mắt / Chiều rộng mặt
-            const eyeDistance = euclideanDistance(landmarks[33], landmarks[263]);
-            const eyeRatio = eyeDistance / faceWidth;
-            const eyesScore = goldenRatioScore(eyeRatio, 0.46);
-
-            // 4. MŨI (NOSE): Chiều dài mũi / Chiều rộng mũi
-            const noseLength = euclideanDistance(landmarks[6], landmarks[2]);
-            const noseWidth = euclideanDistance(landmarks[98], landmarks[327]);
-            const noseRatio = noseLength / noseWidth;
-            const noseScore = goldenRatioScore(noseRatio, 1.1);
-
-            // 5. DA MẶT (SKIN): Tính độ lệch chuẩn màu da (giả lập texture)
-            // Lấy vùng má phải (landmark 234 area)
-            let skinScore = 60; // Mặc định
-            if (imgData) {
-                // Logic đơn giản hóa cho frontend: Dựa vào độ sáng trung bình
-                // Trong thực tế cần phân tích pixel phức tạp hơn
-                skinScore = 55 + Math.random() * 10; // Giả lập điểm da từ 55-65 cho demo frontend
-            }
-
-            // TỔNG THỂ (Weighted Average - Chặt chẽ)
-            const weights = { appeal: 0.25, jaw: 0.25, eyes: 0.20, nose: 0.15, skin: 0.15 };
-            const overallScore = (appealScore * weights.appeal) + 
-                                 (jawScore * weights.jaw) + 
-                                 (eyesScore * weights.eyes) + 
-                                 (noseScore * weights.nose) + 
-                                 (skinScore * weights.skin);
-
-            // TIỀM NĂNG
-            const potentialScore = overallScore + (100 - overallScore) * 0.4;
-
-            return {
-                appeal: Math.round(appealScore),
-                jaw: Math.round(jawScore),
-                eyes: Math.round(eyesScore),
-                nose: Math.round(noseScore),
-                skin: Math.round(skinScore),
-                overall: Math.round(overallScore),
-                potential: Math.round(potentialScore)
-            };
-        }
-
-        // ==========================================
-        // XỬ LÝ MEDIAPIPE & GIAO DIỆN
-        // ==========================================
-        
-        const faceMesh = new FaceMesh({locateFile: (file) => {
-            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
-        }});
-
-        faceMesh.setOptions({
-            maxNumFaces: 1,
-            refineLandmarks: true,
-            minDetectionConfidence: 0.5,
-            minTrackingConfidence: 0.5
-        });
-
-        faceMesh.onResults((results) => {
-            document.getElementById('loading').classList.remove('show');
-            document.getElementById('uploadBtn').disabled = false;
-
-            if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
-                const landmarks = results.multiFaceLandmarks[0];
-                
-                // Lấy dữ liệu ảnh để tính da (tạm thời bỏ qua để code nhẹ)
-                const metrics = analyzeFaceMetrics(landmarks, null);
-
-                const scores = {
-                    overall: metrics.overall,
-                    potential: metrics.potential,
-                    appeal: metrics.appeal,
-                    jaw: metrics.jaw,
-                    eyes: metrics.eyes,
-                    nose: metrics.nose,
-                    skin: metrics.skin
-                };
-
-                updateUI(scores);
-            } else {
-                alert("❌ Không tìm thấy khuôn mặt! Hãy chụp rõ mặt, nhìn thẳng.");
-            }
-        });
-
-        function updateUI(scores) {
-            const fields = ['overall', 'potential', 'appeal', 'jaw', 'eyes', 'nose', 'skin'];
-            
-            fields.forEach(field => {
-                const score = scores[field];
-                const tier = classifyTier(score);
-                const maxScore = 100;
-                
-                document.getElementById(field + 'Score').textContent = score;
-                document.getElementById(field + 'Tier').textContent = tier;
-                document.getElementById(field + 'Progress').style.width = `${(score / maxScore) * 100}%`;
-                document.getElementById('card-' + field).classList.remove('hidden');
-            });
-        }
-
-        // Event Listeners
-        const uploadBtn = document.getElementById('uploadBtn');
-        const fileInput = document.getElementById('fileInput');
-        const avatarImage = document.getElementById('avatarImage');
-        const avatarPlaceholder = document.getElementById('avatarPlaceholder');
-        const loading = document.getElementById('loading');
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-
-        uploadBtn.addEventListener('click', () => fileInput.click());
-
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            loading.classList.add('show');
-            uploadBtn.disabled = true;
-            
-            // Reset UI
-            ['overall', 'potential', 'appeal', 'jaw', 'eyes', 'nose', 'skin'].forEach(f => {
-                document.getElementById('card-' + f).classList.add('hidden');
-            });
-
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const img = new Image();
-                img.onload = async () => {
-                    avatarImage.src = event.target.result;
-                    avatarImage.style.display = 'block';
-                    avatarPlaceholder.style.display = 'none';
-
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    ctx.drawImage(img, 0, 0);
-                    
-                    // Gửi ảnh vào MediaPipe
-                    await faceMesh.send({image: canvas});
-                };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        });
-    </script>
-</body>
-</html>
+           
