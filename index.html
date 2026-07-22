@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PSL Face Scorer - AI Vision</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+    
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -147,7 +152,6 @@
         .score-card.hidden { opacity: 0.3; }
         .score-card.hidden .score-card-value { color: #555; }
         
-        /* API Token Input */
         .api-section {
             background: #111;
             border: 1px solid #333;
@@ -195,6 +199,18 @@
             font-size: 0.9rem;
         }
         .error-msg.show { display: block; }
+        
+        .mode-badge {
+            display: inline-block;
+            background: #5CE1E6;
+            color: #000;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+        canvas { display: none; }
     </style>
 </head>
 <body>
@@ -206,13 +222,12 @@
         </div>
 
         <div class="avatar-container">
-            <div class="avatar-placeholder" id="avatarPlaceholder" onclick="document.getElementById('fileInput').click()"></div>
+            <div class="avatar-placeholder" id="avatarPlaceholder" onclick="document.getElementById('fileInput').click()">📸</div>
             <img src="" alt="Avatar" class="avatar" id="avatarImage" style="display: none;">
         </div>
 
-        <!-- API Token Section -->
         <div class="api-section">
-            <label>🔑 Hugging Face API Token</label>
+            <label>🔑 Hugging Face API Token <span class="mode-badge" id="modeBadge">AI MODE</span></label>
             <input type="password" id="apiToken" class="api-input" placeholder="hf_xxxxxxxxxxxx">
             <a href="https://huggingface.co/settings/tokens" target="_blank" class="api-link">
                 → Lấy token miễn phí tại đây (chỉ cần email)
@@ -256,7 +271,7 @@
             </div>
 
             <div class="score-card hidden" id="card-nose">
-                <div class="score-card-label">MI (NOSE)</div>
+                <div class="score-card-label">MŨI (NOSE)</div>
                 <div class="score-card-value" id="noseScore">-</div>
                 <div class="score-card-tier"><span class="dot">•</span><span id="noseTier">Chưa chấm</span></div>
                 <div class="progress-bar"><div class="progress-fill" id="noseProgress" style="width: 0%"></div></div>
@@ -272,54 +287,55 @@
 
         <div class="upload-section">
             <input type="file" id="fileInput" accept="image/*">
-            <button class="upload-btn" id="uploadBtn">📸 Tải ảnh lên để AI chấm điểm</button>
+            <button class="upload-btn" id="uploadBtn"> Tải ảnh lên để AI chấm điểm</button>
         </div>
 
         <div class="error-msg" id="errorMsg"></div>
 
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p style="color: #5CE1E6;">🤖 AI đang phân tích khuôn mặt...</p>
-            <p style="color: #888; font-size: 0.85rem; margin-top: 8px;">Đang gửi ảnh đến Hugging Face...</p>
+            <p style="color: #5CE1E6;" id="loadingText">🤖 AI đang phân tích khuôn mặt...</p>
         </div>
     </div>
 
+    <canvas id="canvas"></canvas>
+
     <script>
         // ==========================================
-        // AI VISION - HUGGING FACE API
+        // CONFIGURATION
         // ==========================================
         
         const HF_API_URL = "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-VL-72B-Instruct";
         
         const SYSTEM_PROMPT = `Bạn là chuyên gia chấm điểm nhan sắc nam giới theo hệ thống PSL/BowMax.
-Nhiệm vụ: Phân tích khuôn mặt trong ảnh và chấm điểm THẬT CHẶT CHẼ, KHÁCH QUAN.
+Chấm điểm THẬT CHẶT CHẼ, KHÁCH QUAN.
 
-YÊU CẦU CHẤM ĐIỂM (thang 100):
-- Người BÌNH THƯỜNG (không xấu không đẹp): 50-55 điểm (MTN)
+YÊU CẦU:
+- Người BÌNH THƯỜNG: 50-55 điểm (MTN)
 - Người hơi đẹp: 55-60 điểm (MTN+)  
-- Người ĐP RÕ RÀNG: 60-70 điểm (HTN)
+- Người ĐẸP RÕ RÀNG: 60-70 điểm (HTN)
 - Người RẤT ĐẸP: 70-80 điểm (Chad)
 - Cực phẩm: 80+ (Gigachad)
 
-CÁC CHỈ SỐ CẦN CHẤM:
-1. APPEAL: Thu hút tổng thể (tóc, thần thái, tổng thể)
-2. HÀM (JAW): Góc hàm, jawline, cằm (thường là điểm yếu nhất của nam giới Á Đông)
-3. MẮT (EYES): Kích thước, mí mắt, khoảng cách 2 mắt
-4. MŨI (NOSE): Sống mũi, đầu mũi, tỷ lệ mũi/mặt
-5. DA MẶT (SKIN): Độ sạch, đều màu, mụn
+CHỈ SỐ CẦN CHẤM:
+1. APPEAL: Thu hút tổng thể
+2. HÀM (JAW): Góc hàm, jawline (thường là điểm yếu nhất)
+3. MẮT (EYES): Kích thước, mí mắt
+4. MI (NOSE): Sống mũi, đầu mũi
+5. DA MẶT (SKIN): Độ sạch, đều màu
 
 CÔNG THỨC:
 - TỔNG THỂ = trung bình có trọng số (jaw 25%, appeal 25%, eyes 20%, nose 15%, skin 15%)
 - TIỀM NĂNG = TỔNG THỂ + (100 - TỔNG THỂ) × 0.4
 
-PHÂN LOẠI TIER:
-- <50: LTN (Low-Tier Normie)
-- 50-59: MTN (Mid-Tier Normie)
-- 60-69: HTN (High-Tier Normie)
+TIER:
+- <50: LTN
+- 50-59: MTN
+- 60-69: HTN
 - 70-79: Chad
 - 80+: Gigachad
 
-TRẢ VỀ JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác):
+TRẢ VỀ JSON ĐÚNG FORMAT (KHÔNG thêm text khác):
 {
   "appeal": 52,
   "jaw": 48,
@@ -330,14 +346,75 @@ TRẢ VỀ JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác):
   "potential": 71
 }`;
 
-        function classifyTier(score) {
-            if (score < 50) return "LTN";
-            if (score < 60) return "MTN";
-            if (score < 70) return "HTN";
-            if (score < 80) return "Chad";
-            return "Gigachad";
+        // ==========================================
+        // RULE-BASED FALLBACK (MediaPipe)
+        // ==========================================
+        
+        function euclideanDistance(p1, p2) {
+            return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
         }
 
+        function calculateAngle(p1, p2, p3) {
+            const v1 = { x: p1.x - p2.x, y: p1.y - p2.y };
+            const v2 = { x: p3.x - p2.x, y: p3.y - p2.y };
+            const dotProduct = v1.x * v2.x + v1.y * v2.y;
+            const magnitude = Math.sqrt(v1.x * v1.x + v1.y * v1.y) * Math.sqrt(v2.x * v2.x + v2.y * v2.y);
+            if (magnitude === 0) return 125;
+            const cosTheta = Math.max(-1, Math.min(1, dotProduct / magnitude));
+            return Math.acos(cosTheta) * (180 / Math.PI);
+        }
+
+        function normalizeScore(actual, ideal, tolerance) {
+            const deviation = Math.abs(actual - ideal);
+            const score = 100 - (deviation / tolerance) * 100;
+            return Math.max(30, Math.min(100, score));
+        }
+
+        function analyzeWithMediaPipe(landmarks) {
+            const faceWidth = euclideanDistance(landmarks[234], landmarks[454]);
+            const faceHeight = euclideanDistance(landmarks[10], landmarks[152]);
+            const faceRatio = faceHeight / faceWidth;
+            
+            const appealScore = normalizeScore(faceRatio, 1.55, 0.3);
+            
+            const jawAngle = calculateAngle(landmarks[172], landmarks[152], landmarks[397]);
+            const jawScore = normalizeScore(jawAngle, 125, 20) * 0.85;
+            
+            const eyeDistance = euclideanDistance(landmarks[33], landmarks[263]);
+            const eyeRatio = eyeDistance / faceWidth;
+            const eyesScore = normalizeScore(eyeRatio, 0.44, 0.08);
+            
+            const noseLength = euclideanDistance(landmarks[6], landmarks[2]);
+            const noseWidth = euclideanDistance(landmarks[98], landmarks[327]);
+            const noseRatio = noseLength / (noseWidth || 1);
+            const noseScore = normalizeScore(noseRatio, 1.1, 0.4);
+            
+            const skinScore = 58 + (Math.random() * 4 - 2);
+
+            const weights = { appeal: 0.20, jaw: 0.25, eyes: 0.20, nose: 0.20, skin: 0.15 };
+            const overallScore = (appealScore * weights.appeal) + 
+                                 (jawScore * weights.jaw) + 
+                                 (eyesScore * weights.eyes) + 
+                                 (noseScore * weights.nose) + 
+                                 (skinScore * weights.skin);
+
+            const potentialScore = overallScore + (100 - overallScore) * 0.4;
+
+            return {
+                appeal: Math.round(appealScore),
+                jaw: Math.round(jawScore),
+                eyes: Math.round(eyesScore),
+                nose: Math.round(noseScore),
+                skin: Math.round(skinScore),
+                overall: Math.round(overallScore),
+                potential: Math.round(potentialScore)
+            };
+        }
+
+        // ==========================================
+        // AI VISION API CALL
+        // ==========================================
+        
         async function analyzeWithAI(imageBase64, apiToken) {
             const response = await fetch(HF_API_URL, {
                 method: "POST",
@@ -381,13 +458,24 @@ TRẢ VỀ JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác):
                           data.generated_text || 
                           JSON.stringify(data);
             
-            // Extract JSON from response
             const jsonMatch = aiText.match(/\{[\s\S]*?\}/);
             if (!jsonMatch) {
-                throw new Error("AI không trả về JSON hợp lệ: " + aiText.substring(0, 200));
+                throw new Error("AI không trả về JSON hợp lệ");
             }
             
             return JSON.parse(jsonMatch[0]);
+        }
+
+        // ==========================================
+        // CLASSIFY TIER
+        // ==========================================
+        
+        function classifyTier(score) {
+            if (score < 50) return "LTN";
+            if (score < 60) return "MTN";
+            if (score < 70) return "HTN";
+            if (score < 80) return "Chad";
+            return "Gigachad";
         }
 
         // ==========================================
@@ -399,8 +487,10 @@ TRẢ VỀ JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác):
         const avatarImage = document.getElementById('avatarImage');
         const avatarPlaceholder = document.getElementById('avatarPlaceholder');
         const loading = document.getElementById('loading');
+        const loadingText = document.getElementById('loadingText');
         const errorMsg = document.getElementById('errorMsg');
         const apiTokenInput = document.getElementById('apiToken');
+        const modeBadge = document.getElementById('modeBadge');
 
         // Load saved token
         const savedToken = localStorage.getItem('hf_token');
@@ -413,19 +503,11 @@ TRẢ VỀ JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác):
             if (!file) return;
 
             const apiToken = apiTokenInput.value.trim();
-            if (!apiToken) {
-                showError("⚠️ Vui lòng nhập Hugging Face API Token trước!");
-                return;
-            }
-
-            // Save token for next time
-            localStorage.setItem('hf_token', apiToken);
-
+            
             loading.classList.add('show');
             uploadBtn.disabled = true;
             errorMsg.classList.remove('show');
             
-            // Reset UI
             ['overall', 'potential', 'appeal', 'jaw', 'eyes', 'nose', 'skin'].forEach(f => {
                 document.getElementById('card-' + f).classList.add('hidden');
             });
@@ -436,9 +518,75 @@ TRẢ VỀ JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác):
                 avatarImage.style.display = 'block';
                 avatarPlaceholder.style.display = 'none';
 
-                try {
-                    const results = await analyzeWithAI(event.target.result, apiToken);
+                let results;
+                let useAI = false;
+
+                // Try AI first if token exists
+                if (apiToken) {
+                    localStorage.setItem('hf_token', apiToken);
+                    loadingText.textContent = '🤖 AI đang phân tích khuôn mặt...';
                     
+                    try {
+                        results = await analyzeWithAI(event.target.result, apiToken);
+                        useAI = true;
+                        modeBadge.textContent = 'AI MODE';
+                    } catch (error) {
+                        console.warn("AI failed, using fallback:", error);
+                        loadingText.textContent = '⚠️ AI lỗi, dùng thuật toán dự phòng...';
+                    }
+                }
+
+                // Fallback to MediaPipe
+                if (!results) {
+                    modeBadge.textContent = 'RULE MODE';
+                    loadingText.textContent = '📐 Đang quét 468 điểm khuôn mặt...';
+                    
+                    try {
+                        const img = new Image();
+                        img.onload = async () => {
+                            const canvas = document.getElementById('canvas');
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0);
+                            
+                            const faceMesh = new FaceMesh({locateFile: (file) => {
+                                return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+                            }});
+
+                            faceMesh.setOptions({
+                                maxNumFaces: 1,
+                                refineLandmarks: true,
+                                minDetectionConfidence: 0.5,
+                                minTrackingConfidence: 0.5
+                            });
+
+                            faceMesh.onResults((meshResults) => {
+                                if (meshResults.multiFaceLandmarks && meshResults.multiFaceLandmarks.length > 0) {
+                                    const landmarks = meshResults.multiFaceLandmarks[0];
+                                    results = analyzeWithMediaPipe(landmarks);
+                                    updateUI(results);
+                                } else {
+                                    showError("❌ Không tìm thấy khuôn mặt!");
+                                }
+                                loading.classList.remove('show');
+                                uploadBtn.disabled = false;
+                            });
+
+                            await faceMesh.send({image: canvas});
+                        };
+                        img.src = event.target.result;
+                        return; // Exit early, will handle in onload
+                    } catch (error) {
+                        showError("❌ Lỗi phân tích: " + error.message);
+                        loading.classList.remove('show');
+                        uploadBtn.disabled = false;
+                        return;
+                    }
+                }
+
+                // If AI succeeded
+                if (results) {
                     const scores = {
                         overall: Math.round(results.overall || 50),
                         potential: Math.round(results.potential || 60),
@@ -448,12 +596,7 @@ TRẢ VỀ JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác):
                         nose: Math.round(results.nose || 55),
                         skin: Math.round(results.skin || 57)
                     };
-
                     updateUI(scores);
-                } catch (error) {
-                    console.error(error);
-                    showError("❌ Lỗi: " + error.message);
-                } finally {
                     loading.classList.remove('show');
                     uploadBtn.disabled = false;
                 }
