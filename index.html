@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PSL Face Scorer - Gemini 3.1</title>
+    <title>PSL Face Scorer</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -131,9 +131,7 @@
         }
         .upload-btn:disabled { background: #555; cursor: not-allowed; }
         #fileInput { display: none; }
-        .loading {
-            display: none; text-align: center; padding: 20px;
-        }
+        .loading { display: none; text-align: center; padding: 20px; }
         .loading.show { display: block; }
         .spinner {
             border: 3px solid rgba(92, 225, 230, 0.2);
@@ -147,40 +145,6 @@
         .score-card.hidden { opacity: 0.3; }
         .score-card.hidden .score-card-value { color: #555; }
         
-        .api-section {
-            background: #111;
-            border: 1px solid #333;
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-        .api-section label {
-            display: block;
-            color: #5CE1E6;
-            font-size: 0.85rem;
-            margin-bottom: 8px;
-            font-weight: bold;
-        }
-        .api-input {
-            width: 100%;
-            padding: 10px;
-            background: #000;
-            border: 1px solid #333;
-            border-radius: 8px;
-            color: white;
-            font-size: 0.9rem;
-            margin-bottom: 10px;
-        }
-        .api-input:focus {
-            outline: none;
-            border-color: #5CE1E6;
-        }
-        .api-hint {
-            color: #888;
-            font-size: 0.75rem;
-            margin-top: 5px;
-        }
-        
         .error-msg {
             background: #331111;
             border: 1px solid #ff4444;
@@ -192,17 +156,6 @@
             font-size: 0.9rem;
         }
         .error-msg.show { display: block; }
-        
-        .mode-badge {
-            display: inline-block;
-            background: #5CE1E6;
-            color: #000;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: bold;
-            margin-left: 8px;
-        }
     </style>
 </head>
 <body>
@@ -214,17 +167,8 @@
         </div>
 
         <div class="avatar-container">
-            <div class="avatar-placeholder" id="avatarPlaceholder" onclick="document.getElementById('fileInput').click()">📸</div>
+            <div class="avatar-placeholder" id="avatarPlaceholder" onclick="document.getElementById('fileInput').click()"></div>
             <img src="" alt="Avatar" class="avatar" id="avatarImage" style="display: none;">
-        </div>
-
-        <!-- Vercel AI Gateway Config -->
-        <div class="api-section">
-            <label>🔗 Vercel AI Gateway URL <span class="mode-badge">GEMINI 3.1</span></label>
-            <input type="text" id="gatewayUrl" class="api-input" placeholder="https://your-app.vercel.app/api/chat">
-            <label>🔑 API Key</label>
-            <input type="password" id="apiKey" class="api-input" placeholder="sk-xxxxxxxx hoặc key của bạn">
-            <div class="api-hint">→ Model: google/gemini-3.1-flash-lite-image</div>
         </div>
 
         <div class="score-grid">
@@ -287,15 +231,16 @@
 
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p style="color: #5CE1E6;" id="loadingText">🤖 Gemini 3.1 đang phân tích...</p>
+            <p style="color: #5CE1E6;" id="loadingText">🤖 GPT-4o-mini đang phân tích...</p>
         </div>
     </div>
 
     <script>
         // ==========================================
-        // VERCEL AI GATEWAY + GEMINI 3.1 FLASH LITE IMAGE
+        // API KEY ĐÃ NHÚNG SẴN
         // ==========================================
-        
+        const API_KEY = "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";
+
         const SYSTEM_PROMPT = `Bạn là chuyên gia chấm điểm nhan sắc nam giới theo hệ thống PSL/BowMax.
 Chấm điểm THẬT CHẶT CHẼ, KHÁCH QUAN như một chuyên gia thẩm mỹ.
 
@@ -335,84 +280,51 @@ QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không
   "potential": 71
 }`;
 
-        async function analyzeWithGemini(imageBase64, gatewayUrl, apiKey) {
-            // Format cho Vercel AI Gateway với Gemini
-            const requestBody = {
-                model: "google/gemini-3.1-flash-lite-image",
-                messages: [
-                    {
-                        role: "system",
-                        content: SYSTEM_PROMPT
-                    },
-                    {
-                        role: "user",
-                        content: [
-                            {
-                                type: "image_url",
-                                image_url: {
-                                    url: imageBase64
-                                }
-                            },
-                            {
-                                type: "text",
-                                text: "Phân tích khuôn mặt trong ảnh này và chấm điểm theo hệ thống PSL. Trả về JSON đúng format."
-                            }
-                        ]
-                    }
-                ],
-                max_tokens: 500,
-                temperature: 0.3
-            };
+        async function analyzeWithGPT(imageBase64) {
+            const messages = [
+                { role: "system", content: SYSTEM_PROMPT },
+                {
+                    role: "user",
+                    content: [
+                        { type: "image_url", image_url: { url: imageBase64, detail: "high" } },
+                        { type: "text", text: "Chấm điểm người này theo tiêu chuẩn trên. Trả về JSON." }
+                    ]
+                }
+            ];
 
-            const headers = {
-                "Content-Type": "application/json"
-            };
-            
-            if (apiKey) {
-                headers["Authorization"] = `Bearer ${apiKey}`;
-            }
-
-            const response = await fetch(gatewayUrl, {
+            const response = await fetch("https://api.openai.com/v1/chat/completions", {
                 method: "POST",
-                headers: headers,
-                body: JSON.stringify(requestBody)
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: messages,
+                    max_tokens: 500,
+                    temperature: 0.3
+                })
             });
 
             if (!response.ok) {
                 const errText = await response.text();
-                throw new Error(`API Error ${response.status}: ${errText}`);
+                let errorMsg = `API Error ${response.status}`;
+                try {
+                    const errJson = JSON.parse(errText);
+                    if (errJson.error?.message) errorMsg = errJson.error.message;
+                } catch(e) {}
+                throw new Error(errorMsg);
             }
 
             const data = await response.json();
             console.log("API Response:", data);
             
-            // Parse response từ Vercel AI Gateway
-            let aiText = "";
+            const aiText = data.choices?.[0]?.message?.content;
+            if (!aiText) throw new Error("AI không trả về kết quả");
             
-            // Thử nhiều format khác nhau
-            if (data.choices?.[0]?.message?.content) {
-                aiText = data.choices[0].message.content;
-            } else if (data.message?.content) {
-                aiText = data.message.content;
-            } else if (data.output?.[0]?.content) {
-                aiText = data.output[0].content;
-            } else if (typeof data === 'string') {
-                aiText = data;
-            } else {
-                aiText = JSON.stringify(data);
-            }
-            
-            // Nếu content là array (Gemini format)
-            if (Array.isArray(aiText)) {
-                aiText = aiText.map(item => item.text || item).join('');
-            }
-            
-            console.log("AI Text:", aiText);
-            
-            // Extract JSON từ response
             const jsonMatch = aiText.match(/\{[\s\S]*?\}/);
             if (!jsonMatch) {
-                throw new Error("AI không trả về JSON hợp lệ. Response: " + aiText.substring(0, 200));
+                throw new Error("AI không trả về JSON hợp lệ: " + aiText.substring(0, 100));
             }
             
             return JSON.parse(jsonMatch[0]);
@@ -426,10 +338,6 @@ QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không
             return "Gigachad";
         }
 
-        // ==========================================
-        // UI HANDLERS
-        // ==========================================
-        
         const uploadBtn = document.getElementById('uploadBtn');
         const fileInput = document.getElementById('fileInput');
         const avatarImage = document.getElementById('avatarImage');
@@ -437,14 +345,6 @@ QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không
         const loading = document.getElementById('loading');
         const loadingText = document.getElementById('loadingText');
         const errorMsg = document.getElementById('errorMsg');
-        const gatewayUrlInput = document.getElementById('gatewayUrl');
-        const apiKeyInput = document.getElementById('apiKey');
-
-        // Load saved config
-        const savedGateway = localStorage.getItem('vercel_gateway_url');
-        const savedApiKey = localStorage.getItem('vercel_api_key');
-        if (savedGateway) gatewayUrlInput.value = savedGateway;
-        if (savedApiKey) apiKeyInput.value = savedApiKey;
 
         uploadBtn.addEventListener('click', () => fileInput.click());
 
@@ -452,24 +352,11 @@ QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không
             const file = e.target.files[0];
             if (!file) return;
 
-            const gatewayUrl = gatewayUrlInput.value.trim();
-            const apiKey = apiKeyInput.value.trim();
-            
-            if (!gatewayUrl) {
-                showError("⚠️ Vui lòng nhập Vercel AI Gateway URL!");
-                return;
-            }
-
-            // Save config
-            localStorage.setItem('vercel_gateway_url', gatewayUrl);
-            if (apiKey) localStorage.setItem('vercel_api_key', apiKey);
-
             loading.classList.add('show');
             uploadBtn.disabled = true;
             errorMsg.classList.remove('show');
-            loadingText.textContent = '🤖 Gemini 3.1 đang phân tích khuôn mặt...';
+            loadingText.textContent = ' GPT-4o-mini đang phân tích...';
             
-            // Reset UI
             ['overall', 'potential', 'appeal', 'jaw', 'eyes', 'nose', 'skin'].forEach(f => {
                 document.getElementById('card-' + f).classList.add('hidden');
             });
@@ -481,7 +368,7 @@ QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không
                 avatarPlaceholder.style.display = 'none';
 
                 try {
-                    const results = await analyzeWithGemini(event.target.result, gatewayUrl, apiKey);
+                    const results = await analyzeWithGPT(event.target.result);
                     console.log("Results:", results);
                     
                     const scores = {
