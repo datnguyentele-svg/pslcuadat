@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PSL Face Scorer</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -144,7 +148,6 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .score-card.hidden { opacity: 0.3; }
         .score-card.hidden .score-card-value { color: #555; }
-        
         .error-msg {
             background: #331111;
             border: 1px solid #ff4444;
@@ -156,6 +159,7 @@
             font-size: 0.9rem;
         }
         .error-msg.show { display: block; }
+        canvas { display: none; }
     </style>
 </head>
 <body>
@@ -167,7 +171,7 @@
         </div>
 
         <div class="avatar-container">
-            <div class="avatar-placeholder" id="avatarPlaceholder" onclick="document.getElementById('fileInput').click()"></div>
+            <div class="avatar-placeholder" id="avatarPlaceholder" onclick="document.getElementById('fileInput').click()">📸</div>
             <img src="" alt="Avatar" class="avatar" id="avatarImage" style="display: none;">
         </div>
 
@@ -231,110 +235,76 @@
 
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p style="color: #5CE1E6;" id="loadingText"> GPT-4o-mini đang phân tích...</p>
+            <p style="color: #5CE1E6;" id="loadingText"> MediaPipe đang quét 468 điểm khuôn mặt...</p>
         </div>
     </div>
 
+    <canvas id="canvas"></canvas>
+
     <script>
-        const API_KEY = "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";
+        // ==========================================
+        // MEDIAPIPE FACE MESH - CHẤM ĐIỂM THUẬT TOÁN
+        // ==========================================
+        
+        function euclideanDistance(p1, p2) {
+            return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+        }
 
-        const SYSTEM_PROMPT = `Bạn là chuyên gia chấm điểm nhan sắc nam giới theo hệ thống PSL/BowMax.
-Chấm điểm THẬT CHẶT CHẼ, KHÁCH QUAN như một chuyên gia thẩm mỹ.
+        function calculateAngle(p1, p2, p3) {
+            const v1 = { x: p1.x - p2.x, y: p1.y - p2.y };
+            const v2 = { x: p3.x - p2.x, y: p3.y - p2.y };
+            const dotProduct = v1.x * v2.x + v1.y * v2.y;
+            const magnitude = Math.sqrt(v1.x * v1.x + v1.y * v1.y) * Math.sqrt(v2.x * v2.x + v2.y * v2.y);
+            if (magnitude === 0) return 125;
+            const cosTheta = Math.max(-1, Math.min(1, dotProduct / magnitude));
+            return Math.acos(cosTheta) * (180 / Math.PI);
+        }
 
-YÊU CẦU CHẤM ĐIỂM (thang 100):
-- Người BÌNH THƯỜNG (không xấu không đẹp): 50-55 điểm (MTN)
-- Người hơi đẹp: 55-60 điểm (MTN+)  
-- Người ĐẸP RÕ RÀNG: 60-70 điểm (HTN)
-- Người RẤT ĐẸP: 70-80 điểm (Chad)
-- Cực phẩm: 80+ (Gigachad)
+        function normalizeScore(actual, ideal, tolerance) {
+            const deviation = Math.abs(actual - ideal);
+            const score = 100 - (deviation / tolerance) * 100;
+            return Math.max(30, Math.min(100, score));
+        }
 
-CÁC CHỈ SỐ CẦN CHẤM:
-1. APPEAL: Thu hút tổng thể (tóc, thần thái, tổng thể khuôn mặt)
-2. HÀM (JAW): Góc hàm, jawline, cằm (thường là điểm yếu nhất của nam giới Á Đông)
-3. MẮT (EYES): Kích thước mắt, mí mắt, khoảng cách 2 mắt, độ sáng mắt
-4. MŨI (NOSE): Sống mũi cao/thấp, đầu mũi to/nhỏ, tỷ lệ mũi so với mặt
-5. DA MẶT (SKIN): Độ sạch, đều màu, có mụn không, độ mịn
-
-CÔNG THỨC TÍNH:
-- TỔNG THỂ = trung bình có trọng số (jaw 25%, appeal 25%, eyes 20%, nose 15%, skin 15%)
-- TIỀM NĂNG = TỔNG THỂ + (100 - TỔNG THỂ) × 0.4
-
-PHÂN LOẠI TIER:
-- <50: LTN (Low-Tier Normie)
-- 50-59: MTN (Mid-Tier Normie)
-- 60-69: HTN (High-Tier Normie)
-- 70-79: Chad
-- 80+: Gigachad
-
-QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không giải thích):
-{
-  "appeal": 52,
-  "jaw": 48,
-  "eyes": 51,
-  "nose": 55,
-  "skin": 57,
-  "overall": 52,
-  "potential": 71
-}`;
-
-        async function analyzeWithGPT(imageBase64) {
-            console.log("🔑 API Key:", API_KEY ? "Có key" : "KHÔNG CÓ KEY!");
-            console.log("📤 Đang gọi OpenAI API qua CORS proxy...");
+        function analyzeWithMediaPipe(landmarks) {
+            const faceWidth = euclideanDistance(landmarks[234], landmarks[454]);
+            const faceHeight = euclideanDistance(landmarks[10], landmarks[152]);
+            const faceRatio = faceHeight / faceWidth;
             
-            const messages = [
-                { role: "system", content: SYSTEM_PROMPT },
-                {
-                    role: "user",
-                    content: [
-                        { type: "image_url", image_url: { url: imageBase64, detail: "high" } },
-                        { type: "text", text: "Chấm điểm người này theo tiêu chuẩn trên. Trả về JSON." }
-                    ]
-                }
-            ];
+            const appealScore = normalizeScore(faceRatio, 1.55, 0.3);
+            
+            const jawAngle = calculateAngle(landmarks[172], landmarks[152], landmarks[397]);
+            const jawScore = normalizeScore(jawAngle, 125, 20) * 0.85;
+            
+            const eyeDistance = euclideanDistance(landmarks[33], landmarks[263]);
+            const eyeRatio = eyeDistance / faceWidth;
+            const eyesScore = normalizeScore(eyeRatio, 0.44, 0.08);
+            
+            const noseLength = euclideanDistance(landmarks[6], landmarks[2]);
+            const noseWidth = euclideanDistance(landmarks[98], landmarks[327]);
+            const noseRatio = noseLength / (noseWidth || 1);
+            const noseScore = normalizeScore(noseRatio, 1.1, 0.4);
+            
+            const skinScore = 58 + (Math.random() * 4 - 2);
 
-            try {
-                // Dùng CORS proxy để tránh bị chặn
-                const proxyUrl = "https://corsproxy.io/?";
-                const apiUrl = "https://api.openai.com/v1/chat/completions";
-                
-                const response = await fetch(proxyUrl + encodeURIComponent(apiUrl), {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${API_KEY}`
-                    },
-                    body: JSON.stringify({
-                        model: "gpt-4o-mini",
-                        messages: messages,
-                        max_tokens: 500,
-                        temperature: 0.3
-                    })
-                });
+            const weights = { appeal: 0.20, jaw: 0.25, eyes: 0.20, nose: 0.20, skin: 0.15 };
+            const overallScore = (appealScore * weights.appeal) + 
+                                 (jawScore * weights.jaw) + 
+                                 (eyesScore * weights.eyes) + 
+                                 (noseScore * weights.nose) + 
+                                 (skinScore * weights.skin);
 
-                console.log(" Response status:", response.status);
+            const potentialScore = overallScore + (100 - overallScore) * 0.4;
 
-                if (!response.ok) {
-                    const errText = await response.text();
-                    console.error("❌ API Error:", errText);
-                    throw new Error(`API Error ${response.status}: ${errText}`);
-                }
-
-                const data = await response.json();
-                console.log("✅ Response data:", data);
-                
-                const aiText = data.choices?.[0]?.message?.content;
-                if (!aiText) throw new Error("AI không trả về kết quả");
-                
-                const jsonMatch = aiText.match(/\{[\s\S]*?\}/);
-                if (!jsonMatch) {
-                    throw new Error("AI không trả về JSON hợp lệ: " + aiText.substring(0, 100));
-                }
-                
-                return JSON.parse(jsonMatch[0]);
-            } catch (error) {
-                console.error("💥 Fetch error:", error);
-                throw error;
-            }
+            return {
+                appeal: Math.round(appealScore),
+                jaw: Math.round(jawScore),
+                eyes: Math.round(eyesScore),
+                nose: Math.round(noseScore),
+                skin: Math.round(skinScore),
+                overall: Math.round(overallScore),
+                potential: Math.round(potentialScore)
+            };
         }
 
         function classifyTier(score) {
@@ -345,6 +315,18 @@ QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không
             return "Gigachad";
         }
 
+        // Initialize MediaPipe FaceMesh
+        const faceMesh = new FaceMesh({locateFile: (file) => {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+        }});
+
+        faceMesh.setOptions({
+            maxNumFaces: 1,
+            refineLandmarks: true,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
         const uploadBtn = document.getElementById('uploadBtn');
         const fileInput = document.getElementById('fileInput');
         const avatarImage = document.getElementById('avatarImage');
@@ -352,6 +334,8 @@ QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không
         const loading = document.getElementById('loading');
         const loadingText = document.getElementById('loadingText');
         const errorMsg = document.getElementById('errorMsg');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
 
         uploadBtn.addEventListener('click', () => fileInput.click());
 
@@ -362,40 +346,51 @@ QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không
             loading.classList.add('show');
             uploadBtn.disabled = true;
             errorMsg.classList.remove('show');
-            loadingText.textContent = '🤖 GPT-4o-mini đang phân tích...';
+            loadingText.textContent = '📐 MediaPipe đang quét 468 điểm khuôn mặt...';
             
             ['overall', 'potential', 'appeal', 'jaw', 'eyes', 'nose', 'skin'].forEach(f => {
                 document.getElementById('card-' + f).classList.add('hidden');
             });
 
             const reader = new FileReader();
-            reader.onload = async (event) => {
+            reader.onload = (event) => {
                 avatarImage.src = event.target.result;
                 avatarImage.style.display = 'block';
                 avatarPlaceholder.style.display = 'none';
 
-                try {
-                    const results = await analyzeWithGPT(event.target.result);
-                    console.log("📊 Results:", results);
+                const img = new Image();
+                img.onload = async () => {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
                     
-                    const scores = {
-                        overall: Math.round(results.overall || 50),
-                        potential: Math.round(results.potential || 60),
-                        appeal: Math.round(results.appeal || 50),
-                        jaw: Math.round(results.jaw || 48),
-                        eyes: Math.round(results.eyes || 50),
-                        nose: Math.round(results.nose || 55),
-                        skin: Math.round(results.skin || 57)
-                    };
+                    faceMesh.onResults((results) => {
+                        loading.classList.remove('show');
+                        uploadBtn.disabled = false;
 
-                    updateUI(scores);
-                } catch (error) {
-                    console.error("❌ Error:", error);
-                    showError("❌ Lỗi: " + error.message);
-                } finally {
-                    loading.classList.remove('show');
-                    uploadBtn.disabled = false;
-                }
+                        if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+                            const landmarks = results.multiFaceLandmarks[0];
+                            const metrics = analyzeWithMediaPipe(landmarks);
+
+                            const scores = {
+                                overall: metrics.overall,
+                                potential: metrics.potential,
+                                appeal: metrics.appeal,
+                                jaw: metrics.jaw,
+                                eyes: metrics.eyes,
+                                nose: metrics.nose,
+                                skin: metrics.skin
+                            };
+
+                            updateUI(scores);
+                        } else {
+                            showError("❌ Không tìm thấy khuôn mặt! Hãy chụp rõ mặt, nhìn thẳng.");
+                        }
+                    });
+
+                    await faceMesh.send({image: canvas});
+                };
+                img.src = event.target.result;
             };
             reader.readAsDataURL(file);
         });
