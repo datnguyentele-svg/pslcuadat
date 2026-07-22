@@ -231,15 +231,12 @@
 
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p style="color: #5CE1E6;" id="loadingText">🤖 GPT-4o-mini đang phân tích...</p>
+            <p style="color: #5CE1E6;" id="loadingText"> GPT-4o-mini đang phân tích...</p>
         </div>
     </div>
 
     <script>
-        // ==========================================
-        // API KEY ĐÃ NHÚNG SẴN
-        // ==========================================
-        const API_KEY = "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";
+        const API_KEY = "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";
 
         const SYSTEM_PROMPT = `Bạn là chuyên gia chấm điểm nhan sắc nam giới theo hệ thống PSL/BowMax.
 Chấm điểm THẬT CHẶT CHẼ, KHÁCH QUAN như một chuyên gia thẩm mỹ.
@@ -281,6 +278,9 @@ QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không
 }`;
 
         async function analyzeWithGPT(imageBase64) {
+            console.log("🔑 API Key:", API_KEY ? "Có key" : "KHÔNG CÓ KEY!");
+            console.log("📤 Đang gọi OpenAI API qua CORS proxy...");
+            
             const messages = [
                 { role: "system", content: SYSTEM_PROMPT },
                 {
@@ -292,42 +292,49 @@ QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không
                 }
             ];
 
-            const response = await fetch("https://api.openai.com/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${API_KEY}`
-                },
-                body: JSON.stringify({
-                    model: "gpt-4o-mini",
-                    messages: messages,
-                    max_tokens: 500,
-                    temperature: 0.3
-                })
-            });
+            try {
+                // Dùng CORS proxy để tránh bị chặn
+                const proxyUrl = "https://corsproxy.io/?";
+                const apiUrl = "https://api.openai.com/v1/chat/completions";
+                
+                const response = await fetch(proxyUrl + encodeURIComponent(apiUrl), {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: "gpt-4o-mini",
+                        messages: messages,
+                        max_tokens: 500,
+                        temperature: 0.3
+                    })
+                });
 
-            if (!response.ok) {
-                const errText = await response.text();
-                let errorMsg = `API Error ${response.status}`;
-                try {
-                    const errJson = JSON.parse(errText);
-                    if (errJson.error?.message) errorMsg = errJson.error.message;
-                } catch(e) {}
-                throw new Error(errorMsg);
-            }
+                console.log(" Response status:", response.status);
 
-            const data = await response.json();
-            console.log("API Response:", data);
-            
-            const aiText = data.choices?.[0]?.message?.content;
-            if (!aiText) throw new Error("AI không trả về kết quả");
-            
-            const jsonMatch = aiText.match(/\{[\s\S]*?\}/);
-            if (!jsonMatch) {
-                throw new Error("AI không trả về JSON hợp lệ: " + aiText.substring(0, 100));
+                if (!response.ok) {
+                    const errText = await response.text();
+                    console.error("❌ API Error:", errText);
+                    throw new Error(`API Error ${response.status}: ${errText}`);
+                }
+
+                const data = await response.json();
+                console.log("✅ Response data:", data);
+                
+                const aiText = data.choices?.[0]?.message?.content;
+                if (!aiText) throw new Error("AI không trả về kết quả");
+                
+                const jsonMatch = aiText.match(/\{[\s\S]*?\}/);
+                if (!jsonMatch) {
+                    throw new Error("AI không trả về JSON hợp lệ: " + aiText.substring(0, 100));
+                }
+                
+                return JSON.parse(jsonMatch[0]);
+            } catch (error) {
+                console.error("💥 Fetch error:", error);
+                throw error;
             }
-            
-            return JSON.parse(jsonMatch[0]);
         }
 
         function classifyTier(score) {
@@ -355,7 +362,7 @@ QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không
             loading.classList.add('show');
             uploadBtn.disabled = true;
             errorMsg.classList.remove('show');
-            loadingText.textContent = ' GPT-4o-mini đang phân tích...';
+            loadingText.textContent = '🤖 GPT-4o-mini đang phân tích...';
             
             ['overall', 'potential', 'appeal', 'jaw', 'eyes', 'nose', 'skin'].forEach(f => {
                 document.getElementById('card-' + f).classList.add('hidden');
@@ -369,7 +376,7 @@ QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không
 
                 try {
                     const results = await analyzeWithGPT(event.target.result);
-                    console.log("Results:", results);
+                    console.log("📊 Results:", results);
                     
                     const scores = {
                         overall: Math.round(results.overall || 50),
@@ -383,7 +390,7 @@ QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không
 
                     updateUI(scores);
                 } catch (error) {
-                    console.error("Error:", error);
+                    console.error("❌ Error:", error);
                     showError("❌ Lỗi: " + error.message);
                 } finally {
                     loading.classList.remove('show');
