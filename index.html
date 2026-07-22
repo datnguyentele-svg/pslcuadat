@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PSL Face Scorer - AI Vision</title>
+    <title>PSL Face Scorer - Vercel AI</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
@@ -174,19 +174,17 @@
             border-radius: 8px;
             color: white;
             font-size: 0.9rem;
+            margin-bottom: 8px;
         }
         .api-input:focus {
             outline: none;
             border-color: #5CE1E6;
         }
-        .api-link {
-            display: block;
+        .api-hint {
             color: #888;
             font-size: 0.75rem;
-            margin-top: 8px;
-            text-decoration: none;
+            margin-top: 5px;
         }
-        .api-link:hover { color: #5CE1E6; }
         
         .error-msg {
             background: #331111;
@@ -226,12 +224,13 @@
             <img src="" alt="Avatar" class="avatar" id="avatarImage" style="display: none;">
         </div>
 
+        <!-- Vercel AI Gateway Config -->
         <div class="api-section">
-            <label>🔑 Hugging Face API Token <span class="mode-badge" id="modeBadge">AI MODE</span></label>
-            <input type="password" id="apiToken" class="api-input" placeholder="hf_xxxxxxxxxxxx">
-            <a href="https://huggingface.co/settings/tokens" target="_blank" class="api-link">
-                → Lấy token miễn phí tại đây (chỉ cần email)
-            </a>
+            <label> Vercel AI Gateway URL</label>
+            <input type="text" id="gatewayUrl" class="api-input" placeholder="https://your-app.vercel.app/api/chat">
+            <label style="margin-top: 12px;"> API Key (nếu có)</label>
+            <input type="password" id="apiKey" class="api-input" placeholder="sk-xxxxxxxx">
+            <div class="api-hint">→ Bạn của bạn sẽ cung cấp 2 thông tin này</div>
         </div>
 
         <div class="score-grid">
@@ -302,41 +301,38 @@
 
     <script>
         // ==========================================
-        // CONFIGURATION - MODEL MỚI ỔN ĐỊNH HƠN
+        // VERCEL AI GATEWAY INTEGRATION
         // ==========================================
         
-        // Dùng model Vision-Language đơn giản hơn, ổn định hơn
-        const HF_API_URL = "https://api-inference.huggingface.co/models/llava-hf/llava-1.5-7b-hf";
-        
-        const SYSTEM_PROMPT = `You are a facial attractiveness rating expert using PSL/BowMax system.
-Rate this person's facial features STRICTLY and OBJECTIVELY.
+        const SYSTEM_PROMPT = `Bạn là chuyên gia chấm điểm nhan sắc nam giới theo hệ thống PSL/BowMax.
+Chấm điểm THẬT CHẶT CHẼ, KHÁCH QUAN.
 
-SCORING SCALE (out of 100):
-- AVERAGE person: 50-55 points (MTN)
-- Slightly attractive: 55-60 (MTN+)
-- Clearly attractive: 60-70 (HTN)
-- Very attractive: 70-80 (Chad)
-- Exceptional: 80+ (Gigachad)
+YÊU CẦU:
+- Người BÌNH THƯỜNG: 50-55 điểm (MTN)
+- Người hơi đẹp: 55-60 điểm (MTN+)  
+- Người ĐP RÕ RÀNG: 60-70 điểm (HTN)
+- Người RẤT ĐẸP: 70-80 điểm (Chad)
+- Cực phẩm: 80+ (Gigachad)
 
-RATE THESE FEATURES:
-1. APPEAL: Overall attractiveness (hair, vibe, general look)
-2. JAW: Jawline definition, chin, gonial angle (usually weakest for Asian males)
-3. EYES: Eye size, eyelid type, eye spacing
-4. NOSE: Nose bridge height, tip definition, nose-to-face ratio
-5. SKIN: Skin clarity, evenness, acne
+CHỈ SỐ CẦN CHẤM:
+1. APPEAL: Thu hút tổng thể
+2. HÀM (JAW): Góc hàm, jawline (thường là điểm yếu nhất)
+3. MẮT (EYES): Kích thước, mí mắt
+4. MŨI (NOSE): Sống mũi, đầu mũi
+5. DA MẶT (SKIN): Độ sạch, đều màu
 
-CALCULATE:
-- OVERALL = weighted average (jaw 25%, appeal 25%, eyes 20%, nose 15%, skin 15%)
-- POTENTIAL = OVERALL + (100 - OVERALL) × 0.4
+CÔNG THỨC:
+- TỔNG THỂ = trung bình có trọng số (jaw 25%, appeal 25%, eyes 20%, nose 15%, skin 15%)
+- TIỀM NĂNG = TỔNG THỂ + (100 - TỔNG THỂ) × 0.4
 
-TIERS:
-- <50: LTN (Low-Tier Normie)
-- 50-59: MTN (Mid-Tier Normie)
-- 60-69: HTN (High-Tier Normie)
+TIER:
+- <50: LTN
+- 50-59: MTN
+- 60-69: HTN
 - 70-79: Chad
 - 80+: Gigachad
 
-Return ONLY valid JSON in this exact format (NO other text):
+TRẢ VỀ JSON ĐÚNG FORMAT (KHÔNG thêm text khác):
 {
   "appeal": 52,
   "jaw": 48,
@@ -347,81 +343,164 @@ Return ONLY valid JSON in this exact format (NO other text):
   "potential": 71
 }`;
 
-        // ==========================================
-        // RULE-BASED FALLBACK (MediaPipe)
-        // ==========================================
-        
-        function euclideanDistance(p1, p2) {
-            return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-        }
-
-        function calculateAngle(p1, p2, p3) {
-            const v1 = { x: p1.x - p2.x, y: p1.y - p2.y };
-            const v2 = { x: p3.x - p2.x, y: p3.y - p2.y };
-            const dotProduct = v1.x * v2.x + v1.y * v2.y;
-            const magnitude = Math.sqrt(v1.x * v1.x + v1.y * v1.y) * Math.sqrt(v2.x * v2.x + v2.y * v2.y);
-            if (magnitude === 0) return 125;
-            const cosTheta = Math.max(-1, Math.min(1, dotProduct / magnitude));
-            return Math.acos(cosTheta) * (180 / Math.PI);
-        }
-
-        function normalizeScore(actual, ideal, tolerance) {
-            const deviation = Math.abs(actual - ideal);
-            const score = 100 - (deviation / tolerance) * 100;
-            return Math.max(30, Math.min(100, score));
-        }
-
-        function analyzeWithMediaPipe(landmarks) {
-            const faceWidth = euclideanDistance(landmarks[234], landmarks[454]);
-            const faceHeight = euclideanDistance(landmarks[10], landmarks[152]);
-            const faceRatio = faceHeight / faceWidth;
-            
-            const appealScore = normalizeScore(faceRatio, 1.55, 0.3);
-            
-            const jawAngle = calculateAngle(landmarks[172], landmarks[152], landmarks[397]);
-            const jawScore = normalizeScore(jawAngle, 125, 20) * 0.85;
-            
-            const eyeDistance = euclideanDistance(landmarks[33], landmarks[263]);
-            const eyeRatio = eyeDistance / faceWidth;
-            const eyesScore = normalizeScore(eyeRatio, 0.44, 0.08);
-            
-            const noseLength = euclideanDistance(landmarks[6], landmarks[2]);
-            const noseWidth = euclideanDistance(landmarks[98], landmarks[327]);
-            const noseRatio = noseLength / (noseWidth || 1);
-            const noseScore = normalizeScore(noseRatio, 1.1, 0.4);
-            
-            const skinScore = 58 + (Math.random() * 4 - 2);
-
-            const weights = { appeal: 0.20, jaw: 0.25, eyes: 0.20, nose: 0.20, skin: 0.15 };
-            const overallScore = (appealScore * weights.appeal) + 
-                                 (jawScore * weights.jaw) + 
-                                 (eyesScore * weights.eyes) + 
-                                 (noseScore * weights.nose) + 
-                                 (skinScore * weights.skin);
-
-            const potentialScore = overallScore + (100 - overallScore) * 0.4;
-
-            return {
-                appeal: Math.round(appealScore),
-                jaw: Math.round(jawScore),
-                eyes: Math.round(eyesScore),
-                nose: Math.round(noseScore),
-                skin: Math.round(skinScore),
-                overall: Math.round(overallScore),
-                potential: Math.round(potentialScore)
-            };
-        }
-
-        // ==========================================
-        // AI VISION API CALL - MODEL MỚI
-        // ==========================================
-        
-        async function analyzeWithAI(imageBase64, apiToken) {
-            const response = await fetch(HF_API_URL, {
+        async function analyzeWithVercelAI(imageBase64, gatewayUrl, apiKey) {
+            const response = await fetch(gatewayUrl, {
                 method: "POST",
                 headers: {
-                    "Authorization": `Bearer ${apiToken}`,
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
+                    ...(apiKey && { "Authorization": `Bearer ${apiKey}` })
                 },
                 body: JSON.stringify({
-                    inputs: `
+                    messages: [
+                        {
+                            role: "system",
+                            content: SYSTEM_PROMPT
+                        },
+                        {
+                            role: "user",
+                            content: [
+                                {
+                                    type: "image_url",
+                                    image_url: { url: imageBase64 }
+                                },
+                                {
+                                    type: "text",
+                                    text: "Chấm điểm khuôn mặt này theo hệ thống PSL. Trả về JSON."
+                                }
+                            ]
+                        }
+                    ],
+                    max_tokens: 500,
+                    temperature: 0.3
+                })
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`API Error ${response.status}: ${errText}`);
+            }
+
+            const data = await response.json();
+            
+            // Parse response from Vercel AI Gateway
+            const aiText = data.choices?.[0]?.message?.content || 
+                          data.message?.content || 
+                          JSON.stringify(data);
+            
+            const jsonMatch = aiText.match(/\{[\s\S]*?\}/);
+            if (!jsonMatch) {
+                throw new Error("AI không trả về JSON hợp lệ");
+            }
+            
+            return JSON.parse(jsonMatch[0]);
+        }
+
+        function classifyTier(score) {
+            if (score < 50) return "LTN";
+            if (score < 60) return "MTN";
+            if (score < 70) return "HTN";
+            if (score < 80) return "Chad";
+            return "Gigachad";
+        }
+
+        // ==========================================
+        // UI HANDLERS
+        // ==========================================
+        
+        const uploadBtn = document.getElementById('uploadBtn');
+        const fileInput = document.getElementById('fileInput');
+        const avatarImage = document.getElementById('avatarImage');
+        const avatarPlaceholder = document.getElementById('avatarPlaceholder');
+        const loading = document.getElementById('loading');
+        const loadingText = document.getElementById('loadingText');
+        const errorMsg = document.getElementById('errorMsg');
+        const gatewayUrlInput = document.getElementById('gatewayUrl');
+        const apiKeyInput = document.getElementById('apiKey');
+
+        // Load saved config
+        const savedGateway = localStorage.getItem('vercel_gateway_url');
+        const savedApiKey = localStorage.getItem('vercel_api_key');
+        if (savedGateway) gatewayUrlInput.value = savedGateway;
+        if (savedApiKey) apiKeyInput.value = savedApiKey;
+
+        uploadBtn.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const gatewayUrl = gatewayUrlInput.value.trim();
+            const apiKey = apiKeyInput.value.trim();
+            
+            if (!gatewayUrl) {
+                showError("⚠️ Vui lòng nhập Vercel AI Gateway URL!");
+                return;
+            }
+
+            // Save config
+            localStorage.setItem('vercel_gateway_url', gatewayUrl);
+            if (apiKey) localStorage.setItem('vercel_api_key', apiKey);
+
+            loading.classList.add('show');
+            uploadBtn.disabled = true;
+            errorMsg.classList.remove('show');
+            loadingText.textContent = '🤖 AI đang phân tích khuôn mặt...';
+            
+            ['overall', 'potential', 'appeal', 'jaw', 'eyes', 'nose', 'skin'].forEach(f => {
+                document.getElementById('card-' + f).classList.add('hidden');
+            });
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                avatarImage.src = event.target.result;
+                avatarImage.style.display = 'block';
+                avatarPlaceholder.style.display = 'none';
+
+                try {
+                    const results = await analyzeWithVercelAI(event.target.result, gatewayUrl, apiKey);
+                    
+                    const scores = {
+                        overall: Math.round(results.overall || 50),
+                        potential: Math.round(results.potential || 60),
+                        appeal: Math.round(results.appeal || 50),
+                        jaw: Math.round(results.jaw || 48),
+                        eyes: Math.round(results.eyes || 50),
+                        nose: Math.round(results.nose || 55),
+                        skin: Math.round(results.skin || 57)
+                    };
+
+                    updateUI(scores);
+                } catch (error) {
+                    console.error(error);
+                    showError("❌ Lỗi: " + error.message);
+                } finally {
+                    loading.classList.remove('show');
+                    uploadBtn.disabled = false;
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function updateUI(scores) {
+            const fields = ['overall', 'potential', 'appeal', 'jaw', 'eyes', 'nose', 'skin'];
+            
+            fields.forEach(field => {
+                const score = scores[field];
+                const tier = classifyTier(score);
+                
+                document.getElementById(field + 'Score').textContent = score;
+                document.getElementById(field + 'Tier').textContent = tier;
+                document.getElementById(field + 'Progress').style.width = `${score}%`;
+                document.getElementById('card-' + field).classList.remove('hidden');
+            });
+        }
+
+        function showError(msg) {
+            errorMsg.textContent = msg;
+            errorMsg.classList.add('show');
+            loading.classList.remove('show');
+            uploadBtn.disabled = false;
+        }
+    </script>
+</body>
+</html>
