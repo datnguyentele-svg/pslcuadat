@@ -345,19 +345,14 @@ TRẢ VỀ JSON (KHÔNG thêm text):
   "potential": 58
 }`;
 
-        // Hàm điều chỉnh tiềm năng - ÁP DỤNG SAU KHI AI TRẢ VỀ
         function adjustPotential(overall, potential) {
             if (overall < 50) {
-                // LTN: tiềm năng tối đa 55 (giữa MTN)
                 return Math.min(Math.round(potential), 55);
             } else if (overall >= 50 && overall < 60) {
-                // MTN: tiềm năng tối đa 62 (không lên HTN)
                 return Math.min(Math.round(potential), 62);
             } else if (overall >= 60 && overall < 70) {
-                // HTN: tiềm năng = overall + 35% khoảng cách
                 return Math.round(overall + (100 - overall) * 0.35);
             } else {
-                // Chad+: tiềm năng = overall + 40% khoảng cách
                 return Math.round(overall + (100 - overall) * 0.4);
             }
         }
@@ -444,7 +439,7 @@ TRẢ VỀ JSON (KHÔNG thêm text):
 
             const apiKey = localStorage.getItem('openai_api_key');
             if (!apiKey) {
-                showError("⚠️ Vui lòng nhập OpenAI API Key trước!");
+                showError("️ Vui lòng nhập OpenAI API Key trước!");
                 apiSection.style.display = 'block';
                 return;
             }
@@ -468,10 +463,9 @@ TRẢ VỀ JSON (KHÔNG thêm text):
                     const results = await analyzeWithGPT(event.target.result, apiKey);
                     console.log("Results:", results);
                     
-                    // ÁP DỤNG ĐIỀU CHỈNH TIỀM NĂNG
                     const scores = {
                         overall: Math.round(results.overall || 50),
-                        potential: adjustPotential(results.overall, results.potential), // ĐÃ SỬA
+                        potential: adjustPotential(results.overall, results.potential),
                         appeal: Math.round(results.appeal || 50),
                         jaw: Math.round(results.jaw || 48),
                         eyes: Math.round(results.eyes || 50),
