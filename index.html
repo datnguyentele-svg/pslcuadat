@@ -170,11 +170,8 @@
             margin-bottom: 10px;
         }
         .api-input:focus { outline: none; border-color: #5CE1E6; }
-        .api-hint {
-            color: #888;
-            font-size: 0.75rem;
-            margin-top: 5px;
-        }
+        .api-hint { color: #888; font-size: 0.75rem; margin-top: 5px; }
+        .api-hint a { color: #5CE1E6; text-decoration: none; }
         
         .error-msg {
             background: #331111;
@@ -213,15 +210,12 @@
             <img src="" alt="Avatar" class="avatar" id="avatarImage" style="display: none;">
         </div>
 
-        <!-- API KEY SECTION -->
+        <!-- API KEY SECTION - LUÔN HIỂN THỊ -->
         <div class="api-section" id="apiSection">
-            <label>🔑 OpenAI API Key <span class="mode-badge">GPT-4o-mini</span></label>
+            <label> OpenAI API Key <span class="mode-badge">GPT-4o-mini</span></label>
             <input type="password" id="apiKey" class="api-input" placeholder="sk-proj-xxxxxxxxxxxx">
             <div class="api-hint">
                 → Lấy key tại: <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a>
-            </div>
-            <div class="api-hint">
-                → Nạp $5 tại: <a href="https://platform.openai.com/settings/billing" target="_blank">platform.openai.com/settings/billing</a>
             </div>
         </div>
 
@@ -290,32 +284,6 @@
     </div>
 
     <script>
-        // ==========================================
-        // API KEY HANDLING
-        // ==========================================
-        
-        const apiKeyInput = document.getElementById('apiKey');
-        const apiSection = document.getElementById('apiSection');
-        const savedApiKey = localStorage.getItem('openai_api_key');
-        
-        // If API key is saved, hide the input section
-        if (savedApiKey) {
-            apiSection.style.display = 'none';
-        }
-        
-        // Save API key to localStorage when user enters it
-        apiKeyInput.addEventListener('change', (e) => {
-            const apiKey = e.target.value.trim();
-            if (apiKey) {
-                localStorage.setItem('openai_api_key', apiKey);
-                apiSection.style.display = 'none';
-            }
-        });
-
-        // ==========================================
-        // SYSTEM PROMPT - TIÊU CHÍ CHẤM PSL
-        // ==========================================
-        
         const SYSTEM_PROMPT = `Bạn là chuyên gia chấm điểm nhan sắc nam giới theo hệ thống PSL/BowMax.
 Chấm điểm THẬT CHẶT CHẼ, KHÁCH QUAN như một chuyên gia thẩm mỹ.
 
@@ -323,7 +291,7 @@ YÊU CẦU CHẤM ĐIỂM (thang 100):
 - Người BÌNH THƯỜNG (không xấu không đẹp): 50-55 điểm (MTN)
 - Người hơi đẹp: 55-60 điểm (MTN+)  
 - Người ĐẸP RÕ RÀNG: 60-70 điểm (HTN)
-- Người RẤT ĐẸP: 70-80 điểm (Chad)
+- Người RẤT ĐP: 70-80 điểm (Chad)
 - Cực phẩm: 80+ (Gigachad)
 
 CÁC CHỈ SỐ CẦN CHẤM:
@@ -355,10 +323,6 @@ QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không
   "potential": 71
 }`;
 
-        // ==========================================
-        // API CALL - GPT-4o-mini
-        // ==========================================
-        
         async function analyzeWithGPT(imageBase64, apiKey) {
             const messages = [
                 { role: "system", content: SYSTEM_PROMPT },
@@ -372,7 +336,6 @@ QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không
             ];
 
             try {
-                // Use CORS proxy to avoid CORS issues
                 const proxyUrl = "https://corsproxy.io/?";
                 const apiUrl = "https://api.openai.com/v1/chat/completions";
                 
@@ -426,10 +389,6 @@ QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không
             return "Gigachad";
         }
 
-        // ==========================================
-        // UI HANDLERS
-        // ==========================================
-        
         const uploadBtn = document.getElementById('uploadBtn');
         const fileInput = document.getElementById('fileInput');
         const avatarImage = document.getElementById('avatarImage');
@@ -437,6 +396,7 @@ QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không
         const loading = document.getElementById('loading');
         const loadingText = document.getElementById('loadingText');
         const errorMsg = document.getElementById('errorMsg');
+        const apiKeyInput = document.getElementById('apiKey');
 
         uploadBtn.addEventListener('click', () => fileInput.click());
 
@@ -444,11 +404,15 @@ QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không
             const file = e.target.files[0];
             if (!file) return;
 
-            // Get API key from localStorage
-            const apiKey = localStorage.getItem('openai_api_key');
+            // Lấy API key từ ô nhập (KHÔNG lưu vào localStorage)
+            const apiKey = apiKeyInput.value.trim();
             if (!apiKey) {
-                showError("⚠️ Vui lòng nhập OpenAI API Key trước!");
-                apiSection.style.display = 'block';
+                showError("⚠️ Vui lòng nhập OpenAI API Key!");
+                return;
+            }
+
+            if (!apiKey.startsWith('sk-')) {
+                showError("⚠️ API Key không hợp lệ! Phải bắt đầu bằng 'sk-'");
                 return;
             }
 
