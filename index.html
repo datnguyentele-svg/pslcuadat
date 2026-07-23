@@ -173,6 +173,21 @@
         .api-hint { color: #888; font-size: 0.75rem; margin-top: 5px; }
         .api-hint a { color: #5CE1E6; text-decoration: none; }
         
+        .change-key-btn {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+        .change-key-btn:hover {
+            background: #555;
+        }
+        
         .error-msg {
             background: #331111;
             border: 1px solid #ff4444;
@@ -211,11 +226,12 @@
         </div>
 
         <div class="api-section" id="apiSection">
-            <label>🔑 OpenAI API Key <span class="mode-badge">GPT-4o-mini</span></label>
+            <label> OpenAI API Key <span class="mode-badge">GPT-4o-mini</span></label>
             <input type="password" id="apiKey" class="api-input" placeholder="sk-proj-xxxxxxxxxxxx">
             <div class="api-hint">
                 → Lấy key tại: <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a>
             </div>
+            <button class="change-key-btn" onclick="clearApiKey()">🔄 Đổi API Key</button>
         </div>
 
         <div class="score-grid">
@@ -248,263 +264,4 @@
             </div>
 
             <div class="score-card hidden" id="card-eyes">
-                <div class="score-card-label">MẮT (EYES)</div>
-                <div class="score-card-value" id="eyesScore">-</div>
-                <div class="score-card-tier"><span class="dot">•</span><span id="eyesTier">Chưa chấm</span></div>
-                <div class="progress-bar"><div class="progress-fill" id="eyesProgress" style="width: 0%"></div></div>
-            </div>
-
-            <div class="score-card hidden" id="card-nose">
-                <div class="score-card-label">MŨI (NOSE)</div>
-                <div class="score-card-value" id="noseScore">-</div>
-                <div class="score-card-tier"><span class="dot">•</span><span id="noseTier">Chưa chấm</span></div>
-                <div class="progress-bar"><div class="progress-fill" id="noseProgress" style="width: 0%"></div></div>
-            </div>
-            
-            <div class="score-card hidden" id="card-skin">
-                <div class="score-card-label">DA MẶT (SKIN)</div>
-                <div class="score-card-value" id="skinScore">-</div>
-                <div class="score-card-tier"><span class="dot">•</span><span id="skinTier">Chưa chấm</span></div>
-                <div class="progress-bar"><div class="progress-fill" id="skinProgress" style="width: 0%"></div></div>
-            </div>
-        </div>
-
-        <div class="upload-section">
-            <input type="file" id="fileInput" accept="image/*">
-            <button class="upload-btn" id="uploadBtn">📸 Tải ảnh lên để AI chấm điểm</button>
-        </div>
-
-        <div class="error-msg" id="errorMsg"></div>
-
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <p style="color: #5CE1E6;" id="loadingText">🤖 GPT-4o-mini đang phân tích...</p>
-        </div>
-    </div>
-
-    <script>
-        const apiKeyInput = document.getElementById('apiKey');
-        const apiSection = document.getElementById('apiSection');
-        const savedApiKey = localStorage.getItem('openai_api_key');
-        
-        if (savedApiKey) {
-            apiSection.style.display = 'none';
-        }
-        
-        apiKeyInput.addEventListener('change', (e) => {
-            const apiKey = e.target.value.trim();
-            if (apiKey) {
-                localStorage.setItem('openai_api_key', apiKey);
-                apiSection.style.display = 'none';
-            }
-        });
-
-        const SYSTEM_PROMPT = `Bạn là chuyên gia chấm điểm nhan sắc nam giới theo hệ thống PSL/BowMax.
-Chấm điểm THẬT CHẶT CHẼ, KHÁCH QUAN, KHÔNG NỂ NANG.
-
-QUY TẮC BẮT BUỘC:
-
-1. NGƯỜI NHIỀU MỠ MẶT / KÉM ƯA NHÌN:
-   - Mặt nhiều mỡ, mặt tròn, hàm mờ, jawline không rõ → CHẤM LTN (dưới 50)
-   - Jaw score phải dưới 45 cho người này
-   - KHÔNG được chấm MTN hay cao hơn
-
-2. TIỀM NĂNG - QUY TẮC TUYỆT ĐỐI:
-   - Nếu overall < 50 (LTN): potential TỐI ĐA = 55 (không được vượt MTN)
-   - Nếu overall 50-59 (MTN): potential TỐI ĐA = 62 (không được lên HTN)
-   - Nếu overall 60-69 (HTN): potential = overall + (100 - overall) × 0.35
-   - Nếu overall 70+ (Chad+): potential = overall + (100 - overall) × 0.4
-
-3. NGƯỜI ĐẸP (jaw rõ, mắt sáng, mũi cao):
-   - Chấm bình thường theo tiêu chuẩn
-
-THANG ĐIỂM:
-- <50: LTN - mặt nhiều mỡ, hàm mờ, kém thu hút
-- 50-59: MTN - người bình thường
-- 60-69: HTN - đẹp rõ ràng  
-- 70-79: Chad - rất đẹp
-- 80+: Gigachad - cực phẩm
-
-CHỈ SỐ:
-1. APPEAL: Thu hút tổng thể
-2. HÀM (JAW): Góc hàm, jawline - người nhiều mỡ PHẢI < 45
-3. MẮT (EYES): Kích thước, mí mắt
-4. MŨI (NOSE): Sống mũi, tỷ lệ
-5. DA MẶT (SKIN): Độ sạch, mụn
-
-CÔNG THỨC TỔNG THỂ: jaw 25% + appeal 25% + eyes 20% + nose 15% + skin 15%
-
-TRẢ VỀ JSON (KHÔNG thêm text):
-{
-  "appeal": 52,
-  "jaw": 48,
-  "eyes": 51,
-  "nose": 55,
-  "skin": 57,
-  "overall": 52,
-  "potential": 58
-}`;
-
-        function adjustPotential(overall, potential) {
-            if (overall < 50) {
-                return Math.min(Math.round(potential), 55);
-            } else if (overall >= 50 && overall < 60) {
-                return Math.min(Math.round(potential), 62);
-            } else if (overall >= 60 && overall < 70) {
-                return Math.round(overall + (100 - overall) * 0.35);
-            } else {
-                return Math.round(overall + (100 - overall) * 0.4);
-            }
-        }
-
-        async function analyzeWithGPT(imageBase64, apiKey) {
-            const messages = [
-                { role: "system", content: SYSTEM_PROMPT },
-                {
-                    role: "user",
-                    content: [
-                        { type: "image_url", image_url: { url: imageBase64, detail: "high" } },
-                        { type: "text", text: "Chấm điểm người này theo tiêu chuẩn trên. Trả về JSON." }
-                    ]
-                }
-            ];
-
-            try {
-                const proxyUrl = "https://corsproxy.io/?";
-                const apiUrl = "https://api.openai.com/v1/chat/completions";
-                
-                const response = await fetch(proxyUrl + encodeURIComponent(apiUrl), {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${apiKey}`
-                    },
-                    body: JSON.stringify({
-                        model: "gpt-4o-mini",
-                        messages: messages,
-                        max_tokens: 500,
-                        temperature: 0.3
-                    })
-                });
-
-                if (!response.ok) {
-                    const errText = await response.text();
-                    let errorMsg = `API Error ${response.status}`;
-                    try {
-                        const errJson = JSON.parse(errText);
-                        if (errJson.error?.message) errorMsg = errJson.error.message;
-                    } catch(e) {}
-                    throw new Error(errorMsg);
-                }
-
-                const data = await response.json();
-                console.log("API Response:", data);
-                
-                const aiText = data.choices?.[0]?.message?.content;
-                if (!aiText) throw new Error("AI không trả về kết quả");
-                
-                const jsonMatch = aiText.match(/\{[\s\S]*?\}/);
-                if (!jsonMatch) {
-                    throw new Error("AI không trả về JSON hợp lệ: " + aiText.substring(0, 100));
-                }
-                
-                return JSON.parse(jsonMatch[0]);
-            } catch (error) {
-                console.error("Error:", error);
-                throw error;
-            }
-        }
-
-        function classifyTier(score) {
-            if (score < 50) return "LTN";
-            if (score < 60) return "MTN";
-            if (score < 70) return "HTN";
-            if (score < 80) return "Chad";
-            return "Gigachad";
-        }
-
-        const uploadBtn = document.getElementById('uploadBtn');
-        const fileInput = document.getElementById('fileInput');
-        const avatarImage = document.getElementById('avatarImage');
-        const avatarPlaceholder = document.getElementById('avatarPlaceholder');
-        const loading = document.getElementById('loading');
-        const loadingText = document.getElementById('loadingText');
-        const errorMsg = document.getElementById('errorMsg');
-
-        uploadBtn.addEventListener('click', () => fileInput.click());
-
-        fileInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const apiKey = localStorage.getItem('openai_api_key');
-            if (!apiKey) {
-                showError("️ Vui lòng nhập OpenAI API Key trước!");
-                apiSection.style.display = 'block';
-                return;
-            }
-
-            loading.classList.add('show');
-            uploadBtn.disabled = true;
-            errorMsg.classList.remove('show');
-            loadingText.textContent = '🤖 GPT-4o-mini đang phân tích...';
-            
-            ['overall', 'potential', 'appeal', 'jaw', 'eyes', 'nose', 'skin'].forEach(f => {
-                document.getElementById('card-' + f).classList.add('hidden');
-            });
-
-            const reader = new FileReader();
-            reader.onload = async (event) => {
-                avatarImage.src = event.target.result;
-                avatarImage.style.display = 'block';
-                avatarPlaceholder.style.display = 'none';
-
-                try {
-                    const results = await analyzeWithGPT(event.target.result, apiKey);
-                    console.log("Results:", results);
-                    
-                    const scores = {
-                        overall: Math.round(results.overall || 50),
-                        potential: adjustPotential(results.overall, results.potential),
-                        appeal: Math.round(results.appeal || 50),
-                        jaw: Math.round(results.jaw || 48),
-                        eyes: Math.round(results.eyes || 50),
-                        nose: Math.round(results.nose || 55),
-                        skin: Math.round(results.skin || 57)
-                    };
-
-                    updateUI(scores);
-                } catch (error) {
-                    console.error("Error:", error);
-                    showError("❌ Lỗi: " + error.message);
-                } finally {
-                    loading.classList.remove('show');
-                    uploadBtn.disabled = false;
-                }
-            };
-            reader.readAsDataURL(file);
-        });
-
-        function updateUI(scores) {
-            const fields = ['overall', 'potential', 'appeal', 'jaw', 'eyes', 'nose', 'skin'];
-            
-            fields.forEach(field => {
-                const score = scores[field];
-                const tier = classifyTier(score);
-                
-                document.getElementById(field + 'Score').textContent = score;
-                document.getElementById(field + 'Tier').textContent = tier;
-                document.getElementById(field + 'Progress').style.width = `${score}%`;
-                document.getElementById('card-' + field).classList.remove('hidden');
-            });
-        }
-
-        function showError(msg) {
-            errorMsg.textContent = msg;
-            errorMsg.classList.add('show');
-            loading.classList.remove('show');
-            uploadBtn.disabled = false;
-        }
-    </script>
-</body>
-</html>
+                <div class="score-card-label">MẮT (EYES
