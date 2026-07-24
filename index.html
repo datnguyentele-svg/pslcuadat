@@ -81,4 +81,407 @@
             position: relative;
             overflow: hidden;
         }
-        .score-card::
+        .score-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #5CE1E6, #00CED1);
+        }
+        .score-card-label {
+            font-size: 0.85rem; font-weight: bold;
+            color: #5CE1E6;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        .score-card-value {
+            font-size: 2.2rem; font-weight: bold;
+            color: white;
+            margin-bottom: 3px;
+        }
+        .score-card-tier {
+            font-size: 0.9rem; color: #888;
+            margin-bottom: 12px;
+        }
+        .score-card-tier .dot { color: #5CE1E6; margin-right: 5px; }
+        .progress-bar {
+            width: 100%; height: 6px;
+            background: #222;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #5CE1E6, #00CED1);
+            border-radius: 3px;
+            transition: width 1s ease;
+            box-shadow: 0 0 10px rgba(92, 225, 230, 0.5);
+        }
+        .upload-section { text-align: center; margin-bottom: 20px; }
+        .upload-btn {
+            background: linear-gradient(135deg, #5CE1E6, #00CED1);
+            color: #000;
+            border: none;
+            padding: 14px 35px;
+            border-radius: 25px;
+            font-size: 1rem; font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+        }
+        .upload-btn:disabled { background: #555; cursor: not-allowed; }
+        #fileInput { display: none; }
+        .loading { display: none; text-align: center; padding: 20px; }
+        .loading.show { display: block; }
+        .spinner {
+            border: 3px solid rgba(92, 225, 230, 0.2);
+            border-top: 3px solid #5CE1E6;
+            border-radius: 50%;
+            width: 40px; height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .score-card.hidden { opacity: 0.3; }
+        .score-card.hidden .score-card-value { color: #555; }
+        
+        .api-section {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        .api-section label {
+            display: block;
+            color: #5CE1E6;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        .api-input {
+            width: 100%;
+            padding: 10px;
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: white;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+        .api-input:focus { outline: none; border-color: #5CE1E6; }
+        .api-hint { color: #888; font-size: 0.75rem; margin-top: 5px; }
+        .api-hint a { color: #5CE1E6; text-decoration: none; }
+        
+        .error-msg {
+            background: #331111;
+            border: 1px solid #ff4444;
+            color: #ff6666;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+            font-size: 0.9rem;
+        }
+        .error-msg.show { display: block; }
+        
+        .mode-badge {
+            display: inline-block;
+            background: #5CE1E6;
+            color: #000;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <div class="header-icon"></div>
+            <div class="header-title">PSL</div>
+            <div class="header-icon-right">🤖</div>
+        </div>
+
+        <div class="avatar-container">
+            <div class="avatar-placeholder" id="avatarPlaceholder" onclick="document.getElementById('fileInput').click()">📸</div>
+            <img src="" alt="Avatar" class="avatar" id="avatarImage" style="display: none;">
+        </div>
+
+        <div class="score-grid">
+            <div class="score-card hidden" id="card-overall">
+                <div class="score-card-label">TỔNG THỂ</div>
+                <div class="score-card-value" id="overallScore">-</div>
+                <div class="score-card-tier"><span class="dot">•</span><span id="overallTier">Chưa chấm</span></div>
+                <div class="progress-bar"><div class="progress-fill" id="overallProgress" style="width: 0%"></div></div>
+            </div>
+            
+            <div class="score-card hidden" id="card-potential">
+                <div class="score-card-label">TIỀM NĂNG</div>
+                <div class="score-card-value" id="potentialScore">-</div>
+                <div class="score-card-tier"><span class="dot">•</span><span id="potentialTier">Chưa chấm</span></div>
+                <div class="progress-bar"><div class="progress-fill" id="potentialProgress" style="width: 0%"></div></div>
+            </div>
+
+            <div class="score-card hidden" id="card-appeal">
+                <div class="score-card-label">APPEAL</div>
+                <div class="score-card-value" id="appealScore">-</div>
+                <div class="score-card-tier"><span class="dot">•</span><span id="appealTier">Chưa chấm</span></div>
+                <div class="progress-bar"><div class="progress-fill" id="appealProgress" style="width: 0%"></div></div>
+            </div>
+
+            <div class="score-card hidden" id="card-jaw">
+                <div class="score-card-label">HÀM (JAW)</div>
+                <div class="score-card-value" id="jawScore">-</div>
+                <div class="score-card-tier"><span class="dot">•</span><span id="jawTier">Chưa chấm</span></div>
+                <div class="progress-bar"><div class="progress-fill" id="jawProgress" style="width: 0%"></div></div>
+            </div>
+
+            <div class="score-card hidden" id="card-eyes">
+                <div class="score-card-label">MẮT (EYES)</div>
+                <div class="score-card-value" id="eyesScore">-</div>
+                <div class="score-card-tier"><span class="dot">•</span><span id="eyesTier">Chưa chấm</span></div>
+                <div class="progress-bar"><div class="progress-fill" id="eyesProgress" style="width: 0%"></div></div>
+            </div>
+
+            <div class="score-card hidden" id="card-nose">
+                <div class="score-card-label">MŨI (NOSE)</div>
+                <div class="score-card-value" id="noseScore">-</div>
+                <div class="score-card-tier"><span class="dot">•</span><span id="noseTier">Chưa chấm</span></div>
+                <div class="progress-bar"><div class="progress-fill" id="noseProgress" style="width: 0%"></div></div>
+            </div>
+            
+            <div class="score-card hidden" id="card-skin">
+                <div class="score-card-label">DA MẶT (SKIN)</div>
+                <div class="score-card-value" id="skinScore">-</div>
+                <div class="score-card-tier"><span class="dot">•</span><span id="skinTier">Chưa chấm</span></div>
+                <div class="progress-bar"><div class="progress-fill" id="skinProgress" style="width: 0%"></div></div>
+            </div>
+        </div>
+
+        <div class="upload-section">
+            <input type="file" id="fileInput" accept="image/*">
+            <button class="upload-btn" id="uploadBtn">📸 Tải ảnh lên để AI chấm điểm</button>
+        </div>
+
+        <div class="error-msg" id="errorMsg"></div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="color: #5CE1E6;" id="loadingText">🤖 GPT-4o-mini đang phân tích...</p>
+        </div>
+
+        <!-- API KEY SECTION - XUỐNG DƯỚI CÙNG -->
+        <div class="api-section" id="apiSection">
+            <label>🔑 OpenAI API Key <span class="mode-badge">GPT-4o-mini</span></label>
+            <input type="password" id="apiKey" class="api-input" placeholder="sk-proj-xxxxxxxxxxxx">
+            <div class="api-hint">
+                → Lấy key tại: <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function adjustPotential(overall, potential) {
+            if (overall < 50) {
+                return Math.min(Math.round(potential), 55);
+            } else if (overall >= 50 && overall < 60) {
+                return Math.min(Math.round(potential), 62);
+            } else if (overall >= 60 && overall < 70) {
+                return Math.round(overall + (100 - overall) * 0.35);
+            } else {
+                return Math.round(overall + (100 - overall) * 0.4);
+            }
+        }
+
+        const SYSTEM_PROMPT = `Bạn là chuyên gia chấm điểm nhan sắc nam giới theo hệ thống PSL/BowMax.
+Chấm điểm THẬT CHẶT CHẼ, KHÁCH QUAN, KHÔNG NỂ NANG.
+
+QUY TẮC BẮT BUỘC:
+
+1. NGƯỜI NHIỀU MỠ MẶT / KÉM ƯA NHÌN:
+   - Mặt nhiều mỡ, mặt tròn, hàm mờ, jawline không rõ → CHẤM LTN (dưới 50)
+   - Jaw score phải dưới 45 cho người này
+
+2. TIỀM NĂNG - QUY TẮC TUYỆT ĐỐI:
+   - Nếu overall < 50 (LTN): potential TỐI ĐA = 55
+   - Nếu overall 50-59 (MTN): potential TỐI ĐA = 62
+   - Nếu overall 60-69 (HTN): potential = overall + (100 - overall) × 0.35
+   - Nếu overall 70+ (Chad+): potential = overall + (100 - overall) × 0.4
+
+THANG ĐIỂM:
+- <50: LTN
+- 50-59: MTN
+- 60-69: HTN
+- 70-79: Chad
+- 80+: Gigachad
+
+TRẢ VỀ JSON (KHÔNG thêm text):
+{
+  "appeal": 52,
+  "jaw": 48,
+  "eyes": 51,
+  "nose": 55,
+  "skin": 57,
+  "overall": 52,
+  "potential": 58
+}`;
+
+        async function analyzeWithGPT(imageBase64, apiKey) {
+            const messages = [
+                { role: "system", content: SYSTEM_PROMPT },
+                {
+                    role: "user",
+                    content: [
+                        { type: "image_url", image_url: { url: imageBase64, detail: "high" } },
+                        { type: "text", text: "Chấm điểm người này theo tiêu chuẩn trên. Trả về JSON." }
+                    ]
+                }
+            ];
+
+            const proxyUrl = "https://corsproxy.io/?";
+            const apiUrl = "https://api.openai.com/v1/chat/completions";
+            
+            const response = await fetch(proxyUrl + encodeURIComponent(apiUrl), {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: messages,
+                    max_tokens: 500,
+                    temperature: 0.3
+                })
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                let errorMsg = `API Error ${response.status}`;
+                try {
+                    const errJson = JSON.parse(errText);
+                    if (errJson.error?.message) {
+                        errorMsg = errJson.error.message;
+                        if (errorMsg.includes('Country') || errorMsg.includes('region') || errorMsg.includes('supported')) {
+                            errorMsg = "❌ OpenAI không hỗ trợ API từ Việt Nam. Vui lòng dùng VPN hoặc chuyển sang Google Gemini API (miễn phí).";
+                        }
+                    }
+                } catch(e) {}
+                throw new Error(errorMsg);
+            }
+
+            const data = await response.json();
+            console.log("API Response:", data);
+            
+            const aiText = data.choices?.[0]?.message?.content;
+            if (!aiText) throw new Error("AI không trả về kết quả");
+            
+            const jsonMatch = aiText.match(/\{[\s\S]*?\}/);
+            if (!jsonMatch) {
+                throw new Error("AI không trả về JSON hợp lệ: " + aiText.substring(0, 100));
+            }
+            
+            return JSON.parse(jsonMatch[0]);
+        }
+
+        function classifyTier(score) {
+            if (score < 50) return "LTN";
+            if (score < 60) return "MTN";
+            if (score < 70) return "HTN";
+            if (score < 80) return "Chad";
+            return "Gigachad";
+        }
+
+        const uploadBtn = document.getElementById('uploadBtn');
+        const fileInput = document.getElementById('fileInput');
+        const avatarImage = document.getElementById('avatarImage');
+        const avatarPlaceholder = document.getElementById('avatarPlaceholder');
+        const loading = document.getElementById('loading');
+        const loadingText = document.getElementById('loadingText');
+        const errorMsg = document.getElementById('errorMsg');
+        const apiKeyInput = document.getElementById('apiKey');
+
+        uploadBtn.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const apiKey = apiKeyInput.value.trim();
+            if (!apiKey) {
+                showError("⚠️ Vui lòng nhập OpenAI API Key ở dưới!");
+                return;
+            }
+
+            if (!apiKey.startsWith('sk-')) {
+                showError("⚠️ API Key không hợp lệ! Phải bắt đầu bằng 'sk-'");
+                return;
+            }
+
+            loading.classList.add('show');
+            uploadBtn.disabled = true;
+            errorMsg.classList.remove('show');
+            loadingText.textContent = '🤖 GPT-4o-mini đang phân tích...';
+            
+            ['overall', 'potential', 'appeal', 'jaw', 'eyes', 'nose', 'skin'].forEach(f => {
+                document.getElementById('card-' + f).classList.add('hidden');
+            });
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                avatarImage.src = event.target.result;
+                avatarImage.style.display = 'block';
+                avatarPlaceholder.style.display = 'none';
+
+                try {
+                    const results = await analyzeWithGPT(event.target.result, apiKey);
+                    console.log("Results:", results);
+                    
+                    const scores = {
+                        overall: Math.round(results.overall || 50),
+                        potential: adjustPotential(results.overall, results.potential),
+                        appeal: Math.round(results.appeal || 50),
+                        jaw: Math.round(results.jaw || 48),
+                        eyes: Math.round(results.eyes || 50),
+                        nose: Math.round(results.nose || 55),
+                        skin: Math.round(results.skin || 57)
+                    };
+
+                    updateUI(scores);
+                } catch (error) {
+                    console.error("Error:", error);
+                    showError("❌ Lỗi: " + error.message);
+                } finally {
+                    loading.classList.remove('show');
+                    uploadBtn.disabled = false;
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function updateUI(scores) {
+            const fields = ['overall', 'potential', 'appeal', 'jaw', 'eyes', 'nose', 'skin'];
+            
+            fields.forEach(field => {
+                const score = scores[field];
+                const tier = classifyTier(score);
+                
+                document.getElementById(field + 'Score').textContent = score;
+                document.getElementById(field + 'Tier').textContent = tier;
+                document.getElementById(field + 'Progress').style.width = `${score}%`;
+                document.getElementById('card-' + field).classList.remove('hidden');
+            });
+        }
+
+        function showError(msg) {
+            errorMsg.textContent = msg;
+            errorMsg.classList.add('show');
+            loading.classList.remove('show');
+            uploadBtn.disabled = false;
+        }
+    </script>
+</body>
+</html>
