@@ -210,7 +210,6 @@
             <img src="" alt="Avatar" class="avatar" id="avatarImage" style="display: none;">
         </div>
 
-        <!-- API KEY SECTION - LUÔN HIỂN THỊ -->
         <div class="api-section" id="apiSection">
             <label> OpenAI API Key <span class="mode-badge">GPT-4o-mini</span></label>
             <input type="password" id="apiKey" class="api-input" placeholder="sk-proj-xxxxxxxxxxxx">
@@ -272,47 +271,53 @@
 
         <div class="upload-section">
             <input type="file" id="fileInput" accept="image/*">
-            <button class="upload-btn" id="uploadBtn">📸 Tải ảnh lên để AI chấm điểm</button>
+            <button class="upload-btn" id="uploadBtn"> Tải ảnh lên để AI chấm điểm</button>
         </div>
 
         <div class="error-msg" id="errorMsg"></div>
 
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p style="color: #5CE1E6;" id="loadingText">🤖 GPT-4o-mini đang phân tích...</p>
+            <p style="color: #5CE1E6;" id="loadingText"> GPT-4o-mini đang phân tích...</p>
         </div>
     </div>
 
     <script>
+        function adjustPotential(overall, potential) {
+            if (overall < 50) {
+                return Math.min(Math.round(potential), 55);
+            } else if (overall >= 50 && overall < 60) {
+                return Math.min(Math.round(potential), 62);
+            } else if (overall >= 60 && overall < 70) {
+                return Math.round(overall + (100 - overall) * 0.35);
+            } else {
+                return Math.round(overall + (100 - overall) * 0.4);
+            }
+        }
+
         const SYSTEM_PROMPT = `Bạn là chuyên gia chấm điểm nhan sắc nam giới theo hệ thống PSL/BowMax.
-Chấm điểm THẬT CHẶT CHẼ, KHÁCH QUAN như một chuyên gia thẩm mỹ.
+Chấm điểm THẬT CHẶT CHẼ, KHÁCH QUAN, KHÔNG NỂ NANG.
 
-YÊU CẦU CHẤM ĐIỂM (thang 100):
-- Người BÌNH THƯỜNG (không xấu không đẹp): 50-55 điểm (MTN)
-- Người hơi đẹp: 55-60 điểm (MTN+)  
-- Người ĐẸP RÕ RÀNG: 60-70 điểm (HTN)
-- Người RẤT ĐP: 70-80 điểm (Chad)
-- Cực phẩm: 80+ (Gigachad)
+QUY TẮC BẮT BUỘC:
 
-CÁC CHỈ SỐ CẦN CHẤM:
-1. APPEAL: Thu hút tổng thể (tóc, thần thái, tổng thể khuôn mặt)
-2. HÀM (JAW): Góc hàm, jawline, cằm (thường là điểm yếu nhất của nam giới Á Đông)
-3. MẮT (EYES): Kích thước mắt, mí mắt, khoảng cách 2 mắt, độ sáng mắt
-4. MŨI (NOSE): Sống mũi cao/thấp, đầu mũi to/nhỏ, tỷ lệ mũi so với mặt
-5. DA MẶT (SKIN): Độ sạch, đều màu, có mụn không, độ mịn
+1. NGƯỜI NHIỀU MỠ MẶT / KÉM ƯA NHÌN:
+   - Mặt nhiều mỡ, mặt tròn, hàm mờ, jawline không rõ → CHẤM LTN (dưới 50)
+   - Jaw score phải dưới 45 cho người này
 
-CÔNG THỨC TÍNH:
-- TỔNG THỂ = trung bình có trọng số (jaw 25%, appeal 25%, eyes 20%, nose 15%, skin 15%)
-- TIỀM NĂNG = TỔNG THỂ + (100 - TỔNG THỂ) × 0.4
+2. TIỀM NĂNG - QUY TẮC TUYỆT ĐỐI:
+   - Nếu overall < 50 (LTN): potential TỐI ĐA = 55
+   - Nếu overall 50-59 (MTN): potential TỐI ĐA = 62
+   - Nếu overall 60-69 (HTN): potential = overall + (100 - overall) × 0.35
+   - Nếu overall 70+ (Chad+): potential = overall + (100 - overall) × 0.4
 
-PHÂN LOẠI TIER:
-- <50: LTN (Low-Tier Normie)
-- 50-59: MTN (Mid-Tier Normie)
-- 60-69: HTN (High-Tier Normie)
+THANG ĐIỂM:
+- <50: LTN
+- 50-59: MTN
+- 60-69: HTN
 - 70-79: Chad
 - 80+: Gigachad
 
-QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không giải thích):
+TRẢ VỀ JSON (KHÔNG thêm text):
 {
   "appeal": 52,
   "jaw": 48,
@@ -320,7 +325,7 @@ QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không
   "nose": 55,
   "skin": 57,
   "overall": 52,
-  "potential": 71
+  "potential": 58
 }`;
 
         async function analyzeWithGPT(imageBase64, apiKey) {
@@ -335,50 +340,50 @@ QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không
                 }
             ];
 
-            try {
-                const proxyUrl = "https://corsproxy.io/?";
-                const apiUrl = "https://api.openai.com/v1/chat/completions";
-                
-                const response = await fetch(proxyUrl + encodeURIComponent(apiUrl), {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${apiKey}`
-                    },
-                    body: JSON.stringify({
-                        model: "gpt-4o-mini",
-                        messages: messages,
-                        max_tokens: 500,
-                        temperature: 0.3
-                    })
-                });
+            const proxyUrl = "https://corsproxy.io/?";
+            const apiUrl = "https://api.openai.com/v1/chat/completions";
+            
+            const response = await fetch(proxyUrl + encodeURIComponent(apiUrl), {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: messages,
+                    max_tokens: 500,
+                    temperature: 0.3
+                })
+            });
 
-                if (!response.ok) {
-                    const errText = await response.text();
-                    let errorMsg = `API Error ${response.status}`;
-                    try {
-                        const errJson = JSON.parse(errText);
-                        if (errJson.error?.message) errorMsg = errJson.error.message;
-                    } catch(e) {}
-                    throw new Error(errorMsg);
-                }
-
-                const data = await response.json();
-                console.log("API Response:", data);
-                
-                const aiText = data.choices?.[0]?.message?.content;
-                if (!aiText) throw new Error("AI không trả về kết quả");
-                
-                const jsonMatch = aiText.match(/\{[\s\S]*?\}/);
-                if (!jsonMatch) {
-                    throw new Error("AI không trả về JSON hợp lệ: " + aiText.substring(0, 100));
-                }
-                
-                return JSON.parse(jsonMatch[0]);
-            } catch (error) {
-                console.error("Error:", error);
-                throw error;
+            if (!response.ok) {
+                const errText = await response.text();
+                let errorMsg = `API Error ${response.status}`;
+                try {
+                    const errJson = JSON.parse(errText);
+                    if (errJson.error?.message) {
+                        errorMsg = errJson.error.message;
+                        if (errorMsg.includes('Country') || errorMsg.includes('region') || errorMsg.includes('supported')) {
+                            errorMsg = "❌ OpenAI không hỗ trợ API từ Việt Nam. Vui lòng dùng VPN hoặc chuyển sang Google Gemini API (miễn phí).";
+                        }
+                    }
+                } catch(e) {}
+                throw new Error(errorMsg);
             }
+
+            const data = await response.json();
+            console.log("API Response:", data);
+            
+            const aiText = data.choices?.[0]?.message?.content;
+            if (!aiText) throw new Error("AI không trả về kết quả");
+            
+            const jsonMatch = aiText.match(/\{[\s\S]*?\}/);
+            if (!jsonMatch) {
+                throw new Error("AI không trả về JSON hợp lệ: " + aiText.substring(0, 100));
+            }
+            
+            return JSON.parse(jsonMatch[0]);
         }
 
         function classifyTier(score) {
@@ -404,22 +409,21 @@ QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không
             const file = e.target.files[0];
             if (!file) return;
 
-            // Lấy API key từ ô nhập (KHÔNG lưu vào localStorage)
             const apiKey = apiKeyInput.value.trim();
             if (!apiKey) {
-                showError("⚠️ Vui lòng nhập OpenAI API Key!");
+                showError("️ Vui lòng nhập OpenAI API Key!");
                 return;
             }
 
             if (!apiKey.startsWith('sk-')) {
-                showError("⚠️ API Key không hợp lệ! Phải bắt đầu bằng 'sk-'");
+                showError("️ API Key không hợp lệ! Phải bắt đầu bằng 'sk-'");
                 return;
             }
 
             loading.classList.add('show');
             uploadBtn.disabled = true;
             errorMsg.classList.remove('show');
-            loadingText.textContent = '🤖 GPT-4o-mini đang phân tích...';
+            loadingText.textContent = ' GPT-4o-mini đang phân tích...';
             
             ['overall', 'potential', 'appeal', 'jaw', 'eyes', 'nose', 'skin'].forEach(f => {
                 document.getElementById('card-' + f).classList.add('hidden');
@@ -437,7 +441,7 @@ QUAN TRỌNG: Trả về JSON ĐÚNG FORMAT SAU (KHÔNG thêm text khác, không
                     
                     const scores = {
                         overall: Math.round(results.overall || 50),
-                        potential: Math.round(results.potential || 60),
+                        potential: adjustPotential(results.overall, results.potential),
                         appeal: Math.round(results.appeal || 50),
                         jaw: Math.round(results.jaw || 48),
                         eyes: Math.round(results.eyes || 50),
