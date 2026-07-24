@@ -31,12 +31,12 @@
             gap: 12px;
             margin-bottom: 25px;
         }
-        .header-icon {
+        .header-icon-left {
             width: 35px; height: 35px;
             border: 2px solid #5CE1E6;
             border-radius: 8px;
             display: flex; justify-content: center; align-items: center;
-            font-size: 18px;
+            font-size: 20px;
             background: #111;
         }
         .header-title { font-size: 2.2rem; font-weight: bold; letter-spacing: 2px; }
@@ -45,7 +45,7 @@
             background: #007AFF;
             border-radius: 8px;
             display: flex; justify-content: center; align-items: center;
-            font-size: 18px;
+            font-size: 20px;
         }
         .avatar-container {
             position: relative;
@@ -200,9 +200,9 @@
 <body>
     <div class="app-container">
         <div class="header">
-            <div class="header-icon"></div>
+            <div class="header-icon-left"></div>
             <div class="header-title">PSL</div>
-            <div class="header-icon-right">🤖</div>
+            <div class="header-icon-right"></div>
         </div>
 
         <div class="avatar-container">
@@ -273,7 +273,7 @@
             <p style="color: #5CE1E6;" id="loadingText">🤖 GPT-4o-mini đang phân tích...</p>
         </div>
 
-        <!-- API KEY SECTION - XUỐNG DƯỚI CÙNG -->
+        <!-- API KEY SECTION - DƯỚI CÙNG -->
         <div class="api-section" id="apiSection">
             <label>🔑 OpenAI API Key <span class="mode-badge">GPT-4o-mini</span></label>
             <input type="password" id="apiKey" class="api-input" placeholder="sk-proj-xxxxxxxxxxxx">
@@ -417,7 +417,7 @@ TRẢ VỀ JSON (KHÔNG thêm text):
             }
 
             if (!apiKey.startsWith('sk-')) {
-                showError("⚠️ API Key không hợp lệ! Phải bắt đầu bằng 'sk-'");
+                showError("️ API Key không hợp lệ! Phải bắt đầu bằng 'sk-'");
                 return;
             }
 
